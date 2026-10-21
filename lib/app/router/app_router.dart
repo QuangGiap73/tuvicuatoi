@@ -9,6 +9,8 @@ import '../../features/ai_chat/presentation/ai_chat_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/horoscope/presentation/horoscope_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+import '../../features/profile/presentation/personal_profile_page.dart';
+import '../../features/profile/presentation/edit_profile_page.dart';
 import '../../features/wallet/presentation/wallet_page.dart';
 import 'app_shell.dart';
 
@@ -18,6 +20,8 @@ abstract final class AppRoute {
   static const chat = '/ai-chat';
   static const wallet = '/wallet';
   static const profile = '/profile';
+  static const personalProfile = '/profile/personal';
+  static const editProfile = '/profile/personal/edit';
   static const authGate = '/auth-gate';
   static const login = '/login';
   static const register = '/register';
@@ -32,7 +36,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
       final isAuthRoute =
           location == AppRoute.welcome ||
-          location == AppRoute.login || location == AppRoute.register;
+          location == AppRoute.login ||
+          location == AppRoute.register;
       final isGate = location == AppRoute.authGate;
 
       if (auth.isLoading) {
@@ -84,6 +89,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.profile,
                 builder: (_, _) => const ProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'personal',
+                    builder: (_, _) => const PersonalProfilePage(),
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        builder: (_, _) => const EditProfilePage(),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

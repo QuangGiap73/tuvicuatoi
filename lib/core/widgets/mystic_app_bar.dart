@@ -19,16 +19,16 @@ class MysticAppBar extends StatelessWidget implements PreferredSizeWidget {
     leading: leading,
     actions: actions,
     centerTitle: true,
-    backgroundColor: MysticColors.midnight.withValues(alpha: .94),
-    foregroundColor: MysticColors.paleGold,
+    backgroundColor: MysticColors.appBarBackground,
+    foregroundColor: MysticColors.appBarTitle,
+    flexibleSpace: const DecoratedBox(
+      decoration: BoxDecoration(gradient: MysticColors.appBarGradient),
+    ),
     surfaceTintColor: Colors.transparent,
     scrolledUnderElevation: 0,
     bottom: PreferredSize(
       preferredSize: const Size.fromHeight(1),
-      child: Divider(
-        height: 1,
-        color: MysticColors.gold.withValues(alpha: .35),
-      ),
+      child: Divider(height: 1, color: MysticColors.appBarDivider),
     ),
   );
 }

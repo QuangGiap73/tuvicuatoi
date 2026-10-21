@@ -14,11 +14,13 @@ class MysticBottomNav extends StatelessWidget {
     required this.currentIndex,
     required this.items,
     required this.onTap,
+    this.showBackgroundThrough = false,
   });
 
   final int currentIndex;
   final List<MysticNavItem> items;
   final ValueChanged<int> onTap;
+  final bool showBackgroundThrough;
 
   static const Color _background = Color(0xFF080F1D);
   static const Color _active = Color(0xFFFFD46F);
@@ -36,10 +38,16 @@ class MysticBottomNav extends StatelessWidget {
         child: Container(
           height: 64,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF101925), _background, Color(0xFF050A12)],
+              colors: showBackgroundThrough
+                  ? const [
+                      Color(0xD9101925),
+                      Color(0xDF080F1D),
+                      Color(0xE6050A12),
+                    ]
+                  : const [Color(0xFF101925), _background, Color(0xFF050A12)],
             ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: _border, width: 1),

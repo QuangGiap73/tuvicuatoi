@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/mystic_colors.dart';
+
 class HomeMysticAppBar extends StatelessWidget implements PreferredSizeWidget {
   const HomeMysticAppBar({
     super.key,
@@ -16,24 +18,18 @@ class HomeMysticAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onWalletPressed;
   final VoidCallback? onAddCoinPressed;
 
-  static const _gold = Color(0xFFDDAF50);
-
   @override
   Size get preferredSize => const Size.fromHeight(66);
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF081120),
+      color: MysticColors.appBarBackground,
       child: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF111E30), Color(0xFF081120), Color(0xFF0D1726)],
-          ),
+          gradient: MysticColors.appBarGradient,
           border: Border(
-            bottom: BorderSide(color: Color(0xFF574324), width: 0.65),
+            bottom: BorderSide(color: MysticColors.appBarDivider, width: 0.65),
           ),
           boxShadow: [
             BoxShadow(
@@ -54,7 +50,7 @@ class HomeMysticAppBar extends StatelessWidget implements PreferredSizeWidget {
                   _MysticIconButton(
                     tooltip: 'Mở menu',
                     icon: Icons.menu_rounded,
-                    color: _gold,
+                    color: MysticColors.appBarGold,
                     onPressed: onMenuPressed,
                   ),
 
@@ -101,7 +97,7 @@ class _MysticBrand extends StatelessWidget {
               fontSize: 23,
               fontWeight: FontWeight.w800,
               letterSpacing: 2.1,
-              color: Color(0xFFFFE3A0),
+              color: MysticColors.appBarTitle,
               height: 1.05,
               shadows: [Shadow(color: Color(0x997D531B), blurRadius: 9)],
             ),

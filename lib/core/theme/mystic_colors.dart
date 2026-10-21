@@ -10,4 +10,17 @@ abstract final class MysticColors {
   static const ink = Color(0xFF352716);
   static const ivory = Color(0xFFF9F1DF);
   static const error = Color(0xFFE78375);
+
+  // Shared App Bar palette.
+  static const appBarBackground = Color(0xFF081120);
+  static const appBarTop = Color(0xFF111E30);
+  static const appBarBottom = Color(0xFF0D1726);
+  static const appBarGold = Color(0xFFDDAF50);
+  static const appBarTitle = Color(0xFFFFE3A0);
+  static const appBarDivider = Color(0xFF574324);
+  static const appBarGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [appBarTop, appBarBackground, appBarBottom],
+  );
 }

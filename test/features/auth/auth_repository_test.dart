@@ -28,6 +28,7 @@ void main() {
           'isPremium': false,
           'role': 'member',
           'authProvider': 'credentials',
+          'createdAt': '2026-09-14T14:54:00Z',
         },
       }),
       data: {'email': 'member@example.com', 'password': 'MatKhau@123'},
@@ -41,40 +42,44 @@ void main() {
     expect(session.token, 'login-token');
     expect(session.user.fullName, 'Nguyễn Văn An');
     expect(session.user.coinBalance, 300);
+    expect(session.user.memberSince, '2026-09-14T14:54:00Z');
   });
 
-  test('register posts only supplied optional fields and parses session', () async {
-    adapter.onPost(
-      '/auth/register/',
-      (server) => server.reply(200, {
-        'success': true,
-        'session_id': 'register-token',
-        'user': {
-          'id': 'user-2',
+  test(
+    'register posts only supplied optional fields and parses session',
+    () async {
+      adapter.onPost(
+        '/auth/register/',
+        (server) => server.reply(200, {
+          'success': true,
+          'session_id': 'register-token',
+          'user': {
+            'id': 'user-2',
+            'email': 'new@example.com',
+            'fullName': 'Nguyễn Văn Bình',
+            'coinBalance': 300,
+            'isPremium': false,
+            'role': 'member',
+            'authProvider': 'credentials',
+          },
+        }),
+        data: {
           'email': 'new@example.com',
+          'password': 'MatKhau@123',
           'fullName': 'Nguyễn Văn Bình',
-          'coinBalance': 300,
-          'isPremium': false,
-          'role': 'member',
-          'authProvider': 'credentials',
         },
-      }),
-      data: {
-        'email': 'new@example.com',
-        'password': 'MatKhau@123',
-        'fullName': 'Nguyễn Văn Bình',
-      },
-    );
+      );
 
-    final session = await repository.register(
-      email: 'new@example.com',
-      password: 'MatKhau@123',
-      fullName: 'Nguyễn Văn Bình',
-    );
+      final session = await repository.register(
+        email: 'new@example.com',
+        password: 'MatKhau@123',
+        fullName: 'Nguyễn Văn Bình',
+      );
 
-    expect(session.token, 'register-token');
-    expect(session.user.email, 'new@example.com');
-  });
+      expect(session.token, 'register-token');
+      expect(session.user.email, 'new@example.com');
+    },
+  );
 
   test('login exposes the backend error message', () async {
     adapter.onPost(
@@ -87,7 +92,8 @@ void main() {
     );
 
     expect(
-      () => repository.login(email: 'wrong@example.com', password: 'wrong-pass'),
+      () =>
+          repository.login(email: 'wrong@example.com', password: 'wrong-pass'),
       throwsA(
         isA<AuthException>().having(
           (error) => error.message,
@@ -121,5 +127,33 @@ void main() {
 
     expect(session.token, 'backend-token');
     expect(session.user.authProvider, 'google');
+  });
+
+  test('user parses Django date_joined as memberSince', () async {
+    adapter.onPost(
+      '/auth/login/',
+      (server) => server.reply(200, {
+        'success': true,
+        'token': 'member-token',
+        'user': {
+          'id': 'member-user',
+          'email': 'member@example.com',
+          'fullName': 'Member',
+          'coinBalance': 0,
+          'isPremium': false,
+          'role': 'member',
+          'authProvider': 'credentials',
+          'date_joined': '2026-09-14T14:54:00Z',
+        },
+      }),
+      data: {'email': 'member@example.com', 'password': 'password'},
+    );
+
+    final session = await repository.login(
+      email: 'member@example.com',
+      password: 'password',
+    );
+
+    expect(session.user.memberSince, '2026-09-14T14:54:00Z');
   });
 }

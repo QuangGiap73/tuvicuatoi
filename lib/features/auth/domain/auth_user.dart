@@ -8,10 +8,15 @@ class AuthUser {
     required this.role,
     required this.authProvider,
     this.phone,
+    this.birthDate,
+    this.birthTime,
+    this.gender,
+    this.memberSince,
     this.avatarUrl,
     this.packageName,
     this.packageCode,
     this.dailyAiQuestionsLeft,
+    this.savedChartsCount,
     this.maxSavedCharts,
     this.referralCode,
   });
@@ -20,6 +25,10 @@ class AuthUser {
   final String email;
   final String fullName;
   final String? phone;
+  final String? birthDate;
+  final String? birthTime;
+  final String? gender;
+  final String? memberSince;
   final int coinBalance;
   final bool isPremium;
   final String role;
@@ -28,6 +37,7 @@ class AuthUser {
   final String? packageName;
   final String? packageCode;
   final int? dailyAiQuestionsLeft;
+  final int? savedChartsCount;
   final int? maxSavedCharts;
   final String? referralCode;
 
@@ -36,6 +46,18 @@ class AuthUser {
     email: json['email']?.toString() ?? '',
     fullName: (json['fullName'] ?? json['displayName'] ?? '').toString(),
     phone: json['phone']?.toString(),
+    birthDate: (json['birthDate'] ?? json['dateOfBirth'])?.toString(),
+    birthTime: (json['birthTime'] ?? json['timeOfBirth'])?.toString(),
+    gender: json['gender']?.toString(),
+    memberSince:
+        (json['createdAt'] ??
+                json['created_at'] ??
+                json['dateJoined'] ??
+                json['date_joined'] ??
+                json['joinedAt'] ??
+                json['joined_at'] ??
+                json['memberSince'])
+            ?.toString(),
     coinBalance: (json['coinBalance'] as num?)?.toInt() ?? 0,
     isPremium: json['isPremium'] == true,
     role: json['role']?.toString() ?? 'member',
@@ -44,6 +66,7 @@ class AuthUser {
     packageName: json['packageName']?.toString(),
     packageCode: json['packageCode']?.toString(),
     dailyAiQuestionsLeft: (json['dailyAiQuestionsLeft'] as num?)?.toInt(),
+    savedChartsCount: (json['savedChartsCount'] as num?)?.toInt(),
     maxSavedCharts: (json['maxSavedCharts'] as num?)?.toInt(),
     referralCode: json['referralCode']?.toString(),
   );
