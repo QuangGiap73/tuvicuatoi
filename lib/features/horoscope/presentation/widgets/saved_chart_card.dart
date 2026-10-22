@@ -253,55 +253,63 @@ class _CardAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 43,
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          MysticAssets.upgradeFrameB,
-          fit: BoxFit.fill,
-          filterQuality: FilterQuality.medium,
-        ),
-        TextButton(
-          onPressed: onPressed,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-            foregroundColor: danger
-                ? const Color(0xFFB51F35)
-                : dark
-                ? const Color(0xFF123A50)
-                : const Color(0xFF3D2A17),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final cacheWidth =
+            (constraints.maxWidth * MediaQuery.devicePixelRatioOf(context))
+                .round();
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              MysticAssets.upgradeFrameB,
+              fit: BoxFit.fill,
+              cacheWidth: cacheWidth,
+              filterQuality: FilterQuality.medium,
             ),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (loading)
-                  const SizedBox.square(
-                    dimension: 13,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  Icon(icon, size: 17),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: .1,
-                  ),
+            TextButton(
+              onPressed: onPressed,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                foregroundColor: danger
+                    ? const Color(0xFFB51F35)
+                    : dark
+                    ? const Color(0xFF123A50)
+                    : const Color(0xFF3D2A17),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
                 ),
-              ],
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (loading)
+                      const SizedBox.square(
+                        dimension: 13,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      Icon(icon, size: 17),
+                    const SizedBox(width: 5),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     ),
   );
 }

@@ -14,8 +14,9 @@ class MyChartsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(myChartsControllerProvider);
-    final user = ref.watch(authControllerProvider).asData?.value?.user;
+    final user = ref.watch(
+      authControllerProvider.select((value) => value.asData?.value?.user),
+    );
     final cacheWidth =
         (MediaQuery.sizeOf(context).width *
                 MediaQuery.devicePixelRatioOf(context))
@@ -35,65 +36,92 @@ class MyChartsPage extends ConsumerWidget {
           ),
           const ColoredBox(color: Color(0x33000612)),
           SafeArea(
-            child: RefreshIndicator(
-              color: const Color(0xFFD9AE5F),
-              backgroundColor: const Color(0xFF071827),
-              onRefresh: () =>
-                  ref.read(myChartsControllerProvider.notifier).load(),
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: _MyChartsHero(
-                      onBack: context.pop,
-                      onCreate: () => context.go(AppRoute.horoscope),
-                    ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
-                    sliver: SliverList.list(
-                      children: [
-                        _ChartVaultSummary(
-                          user: user,
-                          loadedCount: state.charts.length,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final state = ref.watch(myChartsControllerProvider);
+                return RefreshIndicator(
+                  color: const Color(0xFFD9AE5F),
+                  backgroundColor: const Color(0xFF071827),
+                  onRefresh: () =>
+                      ref.read(myChartsControllerProvider.notifier).load(),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _MyChartsHero(
+                          onBack: context.pop,
                           onCreate: () => context.go(AppRoute.horoscope),
-                          onUpgrade: () => context.go(AppRoute.wallet),
                         ),
-                        const SizedBox(height: 13),
-                        if (state.isLoading && state.charts.isEmpty)
-                          const _LoadingState()
-                        else if (state.errorMessage != null &&
-                            state.charts.isEmpty)
-                          _ErrorState(
-                            message: state.errorMessage!,
-                            onRetry: () => ref
-                                .read(myChartsControllerProvider.notifier)
-                                .load(),
-                          )
-                        else if (state.charts.isEmpty)
-                          _EmptyState(
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 13),
+                        sliver: SliverToBoxAdapter(
+                          child: _ChartVaultSummary(
+                            user: user,
+                            loadedCount: state.charts.length,
                             onCreate: () => context.go(AppRoute.horoscope),
-                          )
-                        else
-                          for (final chart in state.charts) ...[
-                            SavedChartCard(
-                              chart: chart,
-                              isDeleting: state.deletingId == chart.id,
-                              onInterpret: () => _comingSoon(
-                                context,
-                                'Luận giải ${chart.displayName}',
-                              ),
-                              onAskAi: () => context.go(AppRoute.chat),
-                              onDelete: () =>
-                                  _confirmDelete(context, ref, chart.id),
+                            onUpgrade: () => context.go(AppRoute.wallet),
+                          ),
+                        ),
+                      ),
+                      if (state.isLoading && state.charts.isEmpty)
+                        const SliverPadding(
+                          padding: EdgeInsets.fromLTRB(16, 0, 16, 112),
+                          sliver: SliverToBoxAdapter(child: _LoadingState()),
+                        )
+                      else if (state.errorMessage != null &&
+                          state.charts.isEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                          sliver: SliverToBoxAdapter(
+                            child: _ErrorState(
+                              message: state.errorMessage!,
+                              onRetry: () => ref
+                                  .read(myChartsControllerProvider.notifier)
+                                  .load(),
                             ),
-                            const SizedBox(height: 13),
-                          ],
-                      ],
-                    ),
+                          ),
+                        )
+                      else if (state.charts.isEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                          sliver: SliverToBoxAdapter(
+                            child: _EmptyState(
+                              onCreate: () => context.go(AppRoute.horoscope),
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                          sliver: SliverList.builder(
+                            itemCount: state.charts.length,
+                            itemBuilder: (context, index) {
+                              final chart = state.charts[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 13),
+                                child: RepaintBoundary(
+                                  child: SavedChartCard(
+                                    key: ValueKey(chart.id),
+                                    chart: chart,
+                                    isDeleting: state.deletingId == chart.id,
+                                    onInterpret: () => _comingSoon(
+                                      context,
+                                      'Luận giải ${chart.displayName}',
+                                    ),
+                                    onAskAi: () => context.go(AppRoute.chat),
+                                    onDelete: () =>
+                                        _confirmDelete(context, ref, chart.id),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -160,143 +188,147 @@ class _MyChartsHero extends StatelessWidget {
   final VoidCallback onCreate;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(18, 5, 18, 22),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            const _BrandMark(),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tử Vi AI',
-                    style: TextStyle(
-                      color: Color(0xFFFFDEA0),
-                      fontFamily: 'serif',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(
-                    'DESTINY · INSIGHTS',
-                    style: TextStyle(
-                      color: Color(0xFFD9AE5F),
-                      fontSize: 8,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _CircleMenuButton(onPressed: onBack),
-          ],
-        ),
-        const SizedBox(height: 0),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(width: 64, child: Divider(color: Color(0xFFB88B39))),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              child: Icon(
-                Icons.auto_awesome,
-                color: Color(0xFFFFD66D),
-                size: 25,
-              ),
-            ),
-            SizedBox(width: 64, child: Divider(color: Color(0xFFB88B39))),
-          ],
-        ),
-        const SizedBox(height: 5),
-        const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'LÁ SỐ CỦA TÔI',
-            style: TextStyle(
-              color: Color(0xFFFFD368),
-              fontFamily: 'serif',
-              fontSize: 27,
-              height: 1.05,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .7,
-              shadows: [Shadow(color: Color(0xAA9B5D00), blurRadius: 12)],
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        const SizedBox(
-          width: 235,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'Lưu giữ và quản lý các lá số đã tạo.',
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFFF3E9D5),
-                fontFamily: 'serif',
-                fontSize: 10.5,
-                height: 1.2,
-                fontWeight: FontWeight.w700,
-                letterSpacing: .1,
-                shadows: [Shadow(color: Color(0x99000000), blurRadius: 3)],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: 244,
-          height: 44,
-          child: Stack(
-            fit: StackFit.expand,
+  Widget build(BuildContext context) {
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 5, 18, 22),
+      child: Column(
+        children: [
+          Row(
             children: [
-              Image.asset(
-                MysticAssets.bottomFrameA,
-                fit: BoxFit.fill,
-                filterQuality: FilterQuality.high,
-              ),
-              TextButton(
-                onPressed: onCreate,
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFFFF4D9),
-                  padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
+              const _BrandMark(),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.add_rounded, size: 22),
-                    SizedBox(width: 8),
                     Text(
-                      'TẠO LÁ SỐ MỚI',
-                      maxLines: 1,
+                      'Tử Vi AI',
                       style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1,
+                        color: Color(0xFFFFDEA0),
+                        fontFamily: 'serif',
+                        fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: .9,
-                        shadows: [
-                          Shadow(color: Color(0xCC000000), blurRadius: 3),
-                        ],
+                      ),
+                    ),
+                    Text(
+                      'DESTINY · INSIGHTS',
+                      style: TextStyle(
+                        color: Color(0xFFD9AE5F),
+                        fontSize: 8,
+                        letterSpacing: 2,
                       ),
                     ),
                   ],
                 ),
               ),
+              _CircleMenuButton(onPressed: onBack),
             ],
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 0),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(width: 64, child: Divider(color: Color(0xFFB88B39))),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: Color(0xFFFFD66D),
+                  size: 25,
+                ),
+              ),
+              SizedBox(width: 64, child: Divider(color: Color(0xFFB88B39))),
+            ],
+          ),
+          const SizedBox(height: 5),
+          const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'LÁ SỐ CỦA TÔI',
+              style: TextStyle(
+                color: Color(0xFFFFD368),
+                fontFamily: 'serif',
+                fontSize: 27,
+                height: 1.05,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .7,
+                shadows: [Shadow(color: Color(0xAA9B5D00), blurRadius: 12)],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const SizedBox(
+            width: 235,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Lưu giữ và quản lý các lá số đã tạo.',
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFFF3E9D5),
+                  fontFamily: 'serif',
+                  fontSize: 10.5,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .1,
+                  shadows: [Shadow(color: Color(0x99000000), blurRadius: 3)],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 244,
+            height: 44,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  MysticAssets.bottomFrameA,
+                  fit: BoxFit.fill,
+                  cacheWidth: (244 * devicePixelRatio).round(),
+                  filterQuality: FilterQuality.medium,
+                ),
+                TextButton(
+                  onPressed: onCreate,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFF4D9),
+                    padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 22),
+                      SizedBox(width: 8),
+                      Text(
+                        'TẠO LÁ SỐ MỚI',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: .9,
+                          shadows: [
+                            Shadow(color: Color(0xCC000000), blurRadius: 3),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _BrandMark extends StatelessWidget {
@@ -354,13 +386,18 @@ class _ChartVaultSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = loadedCount;
     final max = user?.maxSavedCharts ?? (user?.isPremium == true ? 999 : 1);
+    final cacheWidth =
+        (MediaQuery.sizeOf(context).width *
+                MediaQuery.devicePixelRatioOf(context))
+            .round();
     return Stack(
       children: [
         Positioned.fill(
           child: Image.asset(
             MysticAssets.largeFrameA,
             fit: BoxFit.fill,
-            filterQuality: FilterQuality.high,
+            cacheWidth: cacheWidth,
+            filterQuality: FilterQuality.medium,
           ),
         ),
         Padding(
@@ -444,7 +481,8 @@ class _ChartVaultSummary extends StatelessWidget {
                       Image.asset(
                         MysticAssets.upgradeFrameB,
                         fit: BoxFit.fill,
-                        filterQuality: FilterQuality.high,
+                        cacheWidth: cacheWidth,
+                        filterQuality: FilterQuality.medium,
                       ),
                       TextButton(
                         onPressed: user?.isPremium == true

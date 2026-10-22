@@ -51,9 +51,12 @@ class ChartRepository {
     }
   }
 
-  Future<List<SavedChart>> getMyCharts() async {
+  Future<List<SavedChart>> getMyCharts({CancelToken? cancelToken}) async {
     try {
-      final response = await _dio.get<Object?>('/charts/my-charts/');
+      final response = await _dio.get<Object?>(
+        '/charts/my-charts/',
+        cancelToken: cancelToken,
+      );
       final body = response.data;
       if (body is! Map || body['success'] != true || body['charts'] is! List) {
         throw const ChartException('Không thể đọc danh sách lá số.');
