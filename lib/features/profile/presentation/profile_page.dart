@@ -69,8 +69,7 @@ class ProfilePage extends ConsumerWidget {
                 _showComingSoon(context, 'Nâng cấp Premium'),
             onPersonalProfilePressed: () =>
                 context.push(AppRoute.personalProfile),
-            onChartHistoryPressed: () =>
-                _showComingSoon(context, 'Lịch sử lá số'),
+            onChartHistoryPressed: () => context.push(AppRoute.myCharts),
             onAiHistoryPressed: () =>
                 _showComingSoon(context, 'Lịch sử trò chuyện AI'),
             onTopUpPressed: () => context.go(AppRoute.wallet),

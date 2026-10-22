@@ -8,6 +8,8 @@ import '../../features/auth/presentation/pages/welcome_page.dart';
 import '../../features/ai_chat/presentation/ai_chat_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/horoscope/presentation/horoscope_page.dart';
+import '../../features/horoscope/presentation/chart_result_page.dart';
+import '../../features/horoscope/presentation/my_charts_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/profile/presentation/personal_profile_page.dart';
 import '../../features/profile/presentation/edit_profile_page.dart';
@@ -17,6 +19,8 @@ import 'app_shell.dart';
 abstract final class AppRoute {
   static const home = '/';
   static const horoscope = '/horoscope';
+  static const chartResult = '/horoscope/result';
+  static const myCharts = '/profile/charts';
   static const chat = '/ai-chat';
   static const wallet = '/wallet';
   static const profile = '/profile';
@@ -100,11 +104,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       ),
                     ],
                   ),
+                  GoRoute(
+                    path: 'charts',
+                    builder: (_, _) => const MyChartsPage(),
+                  ),
                 ],
               ),
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoute.chartResult,
+        builder: (_, _) => const ChartResultPage(),
       ),
     ],
   );

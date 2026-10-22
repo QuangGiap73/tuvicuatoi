@@ -24,10 +24,14 @@ class HomeMysticAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: MysticColors.appBarBackground,
+      color: Colors.transparent,
       child: Container(
         decoration: const BoxDecoration(
-          gradient: MysticColors.appBarGradient,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x66020812), Color(0x40020812), Color(0x59020812)],
+          ),
           border: Border(
             bottom: BorderSide(color: MysticColors.appBarDivider, width: 0.65),
           ),
@@ -144,12 +148,22 @@ class _MysticIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 42),
-      icon: Icon(icon, color: color, size: 25),
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0x66071320),
+        border: Border.all(color: const Color(0xFFB98A35), width: 1),
+        boxShadow: const [BoxShadow(color: Color(0x447E591E), blurRadius: 6)],
+      ),
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        splashRadius: 19,
+        icon: Icon(icon, color: color, size: 23),
+      ),
     );
   }
 }

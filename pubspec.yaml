@@ -66,6 +66,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/backgrounds/
+    - assets/images/home/
     - assets/images/profile/
     - assets/images/bottom/
     - assets/images/frame/
