@@ -186,6 +186,8 @@ class AiChatController extends Notifier<AiChatState> {
     var hasAssistantBubble = false;
     try {
       final selectedPalace = palaceNames[state.selectedTopic];
+      // Giữ tiền tố để tương thích backend hiện tại, đồng thời gửi focusPalace
+      // riêng theo hợp đồng API mới.
       final contextualMessage =
           '[Cung đang luận giải: $selectedPalace]\n\n$message';
       await for (final event
@@ -195,6 +197,7 @@ class AiChatController extends Notifier<AiChatState> {
                 message: contextualMessage,
                 chartId: chart.id,
                 chartData: detail.chartData,
+                focusPalace: selectedPalace,
                 isPremium: user.isPremium || user.hasUnlimitedAi,
                 userEmail: user.email,
                 cancelToken: token,

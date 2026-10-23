@@ -3,6 +3,10 @@ class DailyFortune {
     required this.date,
     required this.summary,
     this.canChi,
+    this.canChiDay,
+    this.canChiMonth,
+    this.canChiYear,
+    this.lunarDate,
     this.auspiciousHours = const [],
     this.inauspiciousHours = const [],
     this.shouldDo = const [],
@@ -14,6 +18,10 @@ class DailyFortune {
   final DateTime date;
   final String summary;
   final String? canChi;
+  final String? canChiDay;
+  final String? canChiMonth;
+  final String? canChiYear;
+  final String? lunarDate;
   final List<String> auspiciousHours;
   final List<String> inauspiciousHours;
   final List<String> shouldDo;

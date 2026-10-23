@@ -156,4 +156,47 @@ void main() {
 
     expect(session.user.memberSince, '2026-09-14T14:54:00Z');
   });
+
+  test('me parses the extended account benefits and profile fields', () async {
+    adapter.onGet(
+      '/auth/me/',
+      (server) => server.reply(200, {
+        'success': true,
+        'authenticated': true,
+        'user': {
+          'id': 'premium-user',
+          'email': 'premium@example.com',
+          'fullName': 'Nguyễn Văn A',
+          'displayName': 'Văn A',
+          'solarTime': '06:30',
+          'coinBalance': 1500,
+          'unlimitedCoins': true,
+          'isPremium': true,
+          'role': 'premium',
+          'authProvider': 'credentials',
+          'hasPassword': true,
+          'packageBadge': 'PREMIUM',
+          'premiumExpiryDate': '2026-11-19T00:00:00.000Z',
+          'aiDailyLimit': 999999,
+          'hasUnlimitedSavedCharts': true,
+          'hasDeepInterpretation': true,
+          'hasPdfExport': true,
+          'hasPriorityServer': true,
+        },
+      }),
+    );
+
+    final user = await repository.me();
+
+    expect(user.displayName, 'Văn A');
+    expect(user.birthTime, '06:30');
+    expect(user.hasPassword, isTrue);
+    expect(user.unlimitedCoins, isTrue);
+    expect(user.packageBadge, 'PREMIUM');
+    expect(user.aiDailyLimit, 999999);
+    expect(user.hasUnlimitedSavedCharts, isTrue);
+    expect(user.hasDeepInterpretation, isTrue);
+    expect(user.hasPdfExport, isTrue);
+    expect(user.hasPriorityServer, isTrue);
+  });
 }

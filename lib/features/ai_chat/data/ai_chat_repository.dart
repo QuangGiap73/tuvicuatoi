@@ -102,6 +102,7 @@ class AiChatRepository {
     required String message,
     required String chartId,
     required Map<String, dynamic> chartData,
+    required String focusPalace,
     required bool isPremium,
     required String userEmail,
     CancelToken? cancelToken,
@@ -111,8 +112,9 @@ class AiChatRepository {
         '/ai/chat/',
         data: {
           'message': message,
-          'chartData': chartData,
           'chartId': chartId,
+          'chartData': chartData,
+          'focusPalace': focusPalace,
           'isPremium': isPremium,
           'userEmail': userEmail,
           'stream': true,

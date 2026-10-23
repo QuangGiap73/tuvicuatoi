@@ -5,6 +5,7 @@ abstract final class MysticAssets {
   static const icons = '$root/icons';
   static const auth = '$root/auth';
   static const chat = '$root/chat';
+  static const dailyFortune = '$root/daily_fortune';
   static const horoscope = '$root/horoscope';
   static const articles = '$root/articles';
   static const profile = '$root/profile';
@@ -15,6 +16,7 @@ abstract final class MysticAssets {
   static const welcomeBackground = '$backgrounds/background_A.png';
   static const homeBackground = '$backgrounds/background_home_A.png';
   static const myChartsBackground = '$backgrounds/background_la_so_A.png';
+  static const dailyFortuneBackground = '$backgrounds/background_van_han_A.png';
   static const chartPickerBackground =
       '$backgrounds/background_doi_la_so_B.png';
   static const homeDestinyCard = '$home/card_home_D.png';
@@ -34,6 +36,7 @@ abstract final class MysticAssets {
   static const bottomFrameA = '$bottom/Bottom_frame_A.png';
   static const largeFrameA = '$frame/frame_A.png';
   static const upgradeFrameB = '$frame/frame_B.png';
+  static const dailyFortuneButtonFrame = '$frame/frame_D.png';
   static const horoscopeFormFrame = '$frame/frame_la_so.png';
   static const myChartCardFrame = '$frame/frame_la_so_cua_toi.png';
   static const aiChatBubble = '$chat/chat_A.png';
@@ -42,6 +45,7 @@ abstract final class MysticAssets {
   static const aiChatComposerFrame = '$frame/frame_chat_A.png';
   static const aiChatMainFrame = '$frame/frame_chat.png';
   static const aiChatSend = '$icons/icon_gui_A.png';
+  static const dailyFortuneDateFrame = '$dailyFortune/daily_fortune_A.png';
 
   // Ví dụ sau khi thêm ảnh:
   // static const chatAiAvatar = '$chat/chat_ai_avatar.webp';

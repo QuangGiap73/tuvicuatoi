@@ -37,6 +37,9 @@ void main() {
           'hourBranch': 'Giờ Thìn',
           'lunarDate': '20/07/1995 (Ất Hợi)',
           'lunarYearCanChi': 'Ất Hợi',
+          'lunarMonthCanChi': 'Giáp Thân',
+          'lunarDayCanChi': 'Mậu Dần',
+          'lunarHourCanChi': 'Ất Mão',
           'namXem': '2026 (Bính Ngọ) • 32 tuổi',
           'amDuongThuanLy': 'Âm Dương thuận lý',
           'menhCucBinhHoa': 'Mệnh Hỏa - Cục Kim',
@@ -54,8 +57,15 @@ void main() {
               'name': 'PHU THÊ',
               'element': 'Mộc',
               'isThan': false,
+              'thangHan': 'Tháng 10',
               'mainStars': [
-                {'name': 'Vũ Khúc', 'tag': '(V)'},
+                {
+                  'name': 'Vũ Khúc',
+                  'brightness': 'Vượng Địa',
+                  'tag': '(V)',
+                  'element': 'Kim',
+                  'type': 'chinh-tinh',
+                },
               ],
               'luckyStars': ['Thiên Giải'],
               'badStars': ['Đà La'],
@@ -73,7 +83,15 @@ void main() {
 
     expect(result.fullName, 'Nguyễn Văn An');
     expect(result.palaces, hasLength(1));
-    expect(result.palaces.single.mainStars.single.name, 'Vũ Khúc');
+    expect(result.lunarMonthCanChi, 'Giáp Thân');
+    expect(result.lunarDayCanChi, 'Mậu Dần');
+    expect(result.lunarHourCanChi, 'Ất Mão');
+    final palace = result.palaces.single;
+    expect(palace.thangHan, 'Tháng 10');
+    expect(palace.mainStars.single.name, 'Vũ Khúc');
+    expect(palace.mainStars.single.brightness, 'Vượng Địa');
+    expect(palace.mainStars.single.element, 'Kim');
+    expect(palace.mainStars.single.type, 'chinh-tinh');
   });
 
   test('getMyCharts maps saved chart list', () async {

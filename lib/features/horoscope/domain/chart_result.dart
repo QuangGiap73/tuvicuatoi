@@ -8,6 +8,9 @@ class ChartResult {
     required this.hourBranch,
     required this.lunarDate,
     required this.lunarYearCanChi,
+    this.lunarMonthCanChi = '',
+    this.lunarDayCanChi = '',
+    this.lunarHourCanChi = '',
     required this.namXem,
     required this.amDuongThuanLy,
     required this.menhCucBinhHoa,
@@ -29,6 +32,9 @@ class ChartResult {
   final String hourBranch;
   final String lunarDate;
   final String lunarYearCanChi;
+  final String lunarMonthCanChi;
+  final String lunarDayCanChi;
+  final String lunarHourCanChi;
   final String namXem;
   final String amDuongThuanLy;
   final String menhCucBinhHoa;
@@ -61,6 +67,9 @@ class ChartResult {
       hourBranch: _text(json['hourBranch']),
       lunarDate: _text(json['lunarDate']),
       lunarYearCanChi: _text(json['lunarYearCanChi']),
+      lunarMonthCanChi: _text(json['lunarMonthCanChi']),
+      lunarDayCanChi: _text(json['lunarDayCanChi']),
+      lunarHourCanChi: _text(json['lunarHourCanChi']),
       namXem: _text(json['namXem']),
       amDuongThuanLy: _text(json['amDuongThuanLy']),
       menhCucBinhHoa: _text(json['menhCucBinhHoa']),
@@ -84,6 +93,7 @@ class ChartPalace {
     required this.name,
     required this.element,
     required this.isThan,
+    this.thangHan = '',
     required this.mainStars,
     required this.luckyStars,
     required this.badStars,
@@ -98,6 +108,7 @@ class ChartPalace {
   final String name;
   final String element;
   final bool isThan;
+  final String thangHan;
   final List<ChartStar> mainStars;
   final List<String> luckyStars;
   final List<String> badStars;
@@ -112,6 +123,7 @@ class ChartPalace {
     name: _text(json['name']),
     element: _text(json['element']),
     isThan: json['isThan'] == true,
+    thangHan: _text(json['thangHan']),
     mainStars: _mapList(json['mainStars'], ChartStar.fromJson),
     luckyStars: _stringList(json['luckyStars']),
     badStars: _stringList(json['badStars']),
@@ -127,13 +139,27 @@ class ChartPalace {
 }
 
 class ChartStar {
-  const ChartStar({required this.name, required this.tag});
+  const ChartStar({
+    required this.name,
+    required this.tag,
+    this.brightness = '',
+    this.element = '',
+    this.type = '',
+  });
 
   final String name;
   final String tag;
+  final String brightness;
+  final String element;
+  final String type;
 
-  factory ChartStar.fromJson(Map<String, dynamic> json) =>
-      ChartStar(name: _text(json['name']), tag: _text(json['tag']));
+  factory ChartStar.fromJson(Map<String, dynamic> json) => ChartStar(
+    name: _text(json['name']),
+    tag: _text(json['tag']),
+    brightness: _text(json['brightness']),
+    element: _text(json['element']),
+    type: _text(json['type']),
+  );
 }
 
 String _text(Object? value) => value?.toString() ?? '';

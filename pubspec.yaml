@@ -71,6 +71,7 @@ flutter:
     - assets/images/bottom/
     - assets/images/frame/
     - assets/images/chat/
+    - assets/images/daily_fortune/
     - assets/images/icons/
 
   # To add assets to your application, add an assets section, like this:

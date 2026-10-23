@@ -74,6 +74,59 @@ void main() {
     expect((events[2] as AiChatDone).fullText, 'Xin chào');
   });
 
+  test('chat sends the documented payload with focusPalace', () async {
+    final requestBodies = <Object?>[];
+    final streamDio = Dio(BaseOptions(baseUrl: 'https://tuvicuatoi.com/api'));
+    streamDio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          requestBodies.add(options.data);
+          handler.resolve(
+            Response<ResponseBody>(
+              requestOptions: options,
+              statusCode: 200,
+              headers: Headers.fromMap({
+                Headers.contentTypeHeader: ['application/json'],
+              }),
+              data: ResponseBody.fromString(
+                jsonEncode({'success': true, 'reply': 'Câu trả lời từ AI'}),
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    final streamRepository = AiChatRepository(streamDio);
+
+    final events = await streamRepository
+        .sendMessage(
+          message: 'Công việc của tôi thế nào?',
+          chartId: 'chart-1',
+          chartData: const {'id': 'chart-1'},
+          focusPalace: 'Quan Lộc',
+          isPremium: true,
+          userEmail: 'user@example.com',
+        )
+        .toList();
+
+    expect(requestBodies, [
+      {
+        'message': 'Công việc của tôi thế nào?',
+        'chartId': 'chart-1',
+        'chartData': {'id': 'chart-1'},
+        'focusPalace': 'Quan Lộc',
+        'isPremium': true,
+        'userEmail': 'user@example.com',
+        'stream': true,
+      },
+    ]);
+    expect((events.single as AiChatDone).fullText, 'Câu trả lời từ AI');
+  });
+
   test('clear history posts the selected chart id', () async {
     adapter.onPost(
       '/ai/history/clear/',
