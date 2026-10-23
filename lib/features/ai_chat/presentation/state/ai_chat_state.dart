@@ -1,66 +1,71 @@
 import '../../../horoscope/domain/saved_chart.dart';
+import '../../../horoscope/domain/saved_chart_detail.dart';
+import '../../domain/ai_chat_message.dart';
 
-enum AiChatRole { assistant, user }
-
-class AiChatMessage {
-  const AiChatMessage({
-    required this.id,
-    required this.role,
-    required this.content,
-    required this.time,
-  });
-
-  final String id;
-  final AiChatRole role;
-  final String content;
-  final String time;
+enum AiChatPhase {
+  ready,
+  loadingChart,
+  loadingHistory,
+  sending,
+  streaming,
+  clearingHistory,
 }
 
 class AiChatState {
   const AiChatState({
     this.selectedTopic = 0,
-    this.isSending = false,
-    this.messages = initialMessages,
+    this.phase = AiChatPhase.ready,
+    this.messages = welcomeMessages,
     this.selectedChart,
+    this.selectedChartDetail,
+    this.errorMessage,
   });
 
   final int selectedTopic;
-  final bool isSending;
+  final AiChatPhase phase;
   final List<AiChatMessage> messages;
   final SavedChart? selectedChart;
+  final SavedChartDetail? selectedChartDetail;
+  final String? errorMessage;
+
+  bool get isSending =>
+      phase == AiChatPhase.sending || phase == AiChatPhase.streaming;
+  bool get isWaitingForFirstToken => phase == AiChatPhase.sending;
+  bool get isLoadingHistory => phase == AiChatPhase.loadingHistory;
+  bool get isClearingHistory => phase == AiChatPhase.clearingHistory;
+  bool get isBusy =>
+      isSending ||
+      phase == AiChatPhase.loadingChart ||
+      phase == AiChatPhase.loadingHistory ||
+      phase == AiChatPhase.clearingHistory;
 
   AiChatState copyWith({
     int? selectedTopic,
-    bool? isSending,
+    AiChatPhase? phase,
     List<AiChatMessage>? messages,
     SavedChart? selectedChart,
+    SavedChartDetail? selectedChartDetail,
+    String? errorMessage,
+    bool clearDetail = false,
+    bool clearError = false,
   }) => AiChatState(
     selectedTopic: selectedTopic ?? this.selectedTopic,
-    isSending: isSending ?? this.isSending,
+    phase: phase ?? this.phase,
     messages: messages ?? this.messages,
     selectedChart: selectedChart ?? this.selectedChart,
+    selectedChartDetail: clearDetail
+        ? null
+        : selectedChartDetail ?? this.selectedChartDetail,
+    errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
   );
 
-  static const initialMessages = <AiChatMessage>[
+  static const welcomeMessages = <AiChatMessage>[
     AiChatMessage(
       id: 'welcome',
       role: AiChatRole.assistant,
       content:
-          'Chào bạn, rất vui được đồng hành cùng bạn trên hành trình khám phá những góc nhìn sâu sắc và thiết thực từ lá số Tử Vi.\n\nBạn có thể hỏi về bất kỳ cung nào, vận hạn năm nào, hoặc những vấn đề trong cuộc sống. Tôi sẽ phân tích dựa trên lá số của bạn một cách chi tiết và dễ hiểu nhất.',
-      time: '21:04',
-    ),
-    AiChatMessage(
-      id: 'question-demo',
-      role: AiChatRole.user,
-      content: 'Cung Quan Lộc của tôi phản ánh điều gì về sự nghiệp?',
-      time: '21:05',
-    ),
-    AiChatMessage(
-      id: 'answer-demo',
-      role: AiChatRole.assistant,
-      content:
-          '**Cung Quan Lộc** của bạn phản ánh một phong cách công việc rất quyết liệt, giàu tính thực chiến và luôn hướng tới việc tự mình kiểm soát kết quả thay vì dựa dẫm vào người khác.\n\nTại **cung Quan Lộc** (tại Thân), sự hiện diện của **Phá Quân** (hãm địa) đi cùng **Văn Khúc**, **Thiên Việt**, **Thiên Phúc** và chịu ảnh hưởng của vòng **Tuần** cho thấy bạn là người có tư duy đột phá, dám thay đổi và không ngại thử thách. Bạn phù hợp với những lĩnh vực cần sáng tạo, cải tiến, quản lý dự án hoặc môi trường cạnh tranh cao.',
-      time: '21:06',
+          'Chào bạn, rất vui được đồng hành cùng bạn trên hành trình khám phá lá số Tử Vi. Hãy chọn một lá số và đặt câu hỏi để bắt đầu.',
+      time: '',
     ),
   ];
 }

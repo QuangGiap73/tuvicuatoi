@@ -268,7 +268,8 @@ class _ChartOption extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${chart.menh ?? 'Chưa cập nhật bản mệnh'}\nSinh: ${chart.solarDate} (DL)  ·  Giờ ${chart.hourBranch ?? 'chưa rõ'}',
+                '${chart.menh ?? 'Chưa cập nhật bản mệnh'}${chart.cuc == null ? '' : ' • ${chart.cuc}'}\n'
+                'Sinh: ${chart.solarDate} (DL)  ·  ${_hourLabel(chart.hourBranch)}',
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -299,6 +300,12 @@ class _ChartOption extends StatelessWidget {
       ],
     ),
   );
+
+  static String _hourLabel(String? value) {
+    final hour = value?.trim() ?? '';
+    if (hour.isEmpty) return 'Giờ chưa rõ';
+    return hour.toLowerCase().startsWith('giờ ') ? hour : 'Giờ $hour';
+  }
 }
 
 class _GenderPill extends StatelessWidget {

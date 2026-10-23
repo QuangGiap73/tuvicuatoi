@@ -71,7 +71,7 @@ class HomePage extends ConsumerWidget {
           const SizedBox(height: MysticSpacing.xs),
           HomeFeaturedGrid(
             onChartPressed: () => context.go(AppRoute.horoscope),
-            onTodayPressed: () => _showComingSoon(context, 'Vận hạn hôm nay'),
+            onTodayPressed: () => context.go(AppRoute.dailyFortune),
             onChatPressed: () => context.go(AppRoute.chat),
             onArticlesPressed: () => _showComingSoon(context, 'Bài viết'),
             onViewAllPressed: () => _showComingSoon(context, 'Tính năng'),

@@ -8,6 +8,7 @@ class SavedChart {
     required this.createdAt,
     this.hourBranch,
     this.menh,
+    this.cuc,
   });
 
   final String id;
@@ -18,6 +19,7 @@ class SavedChart {
   final String createdAt;
   final String? hourBranch;
   final String? menh;
+  final String? cuc;
 
   String get displayName {
     final value = name
@@ -45,13 +47,40 @@ class SavedChart {
 
     return SavedChart(
       id: (json['id'] ?? json['chartId'] ?? '').toString(),
-      name: (json['name'] ?? nested['fullName'] ?? 'Lá số Tử Vi').toString(),
+      name:
+          (json['name'] ??
+                  json['fullName'] ??
+                  json['full_name'] ??
+                  nested['fullName'] ??
+                  nested['full_name'] ??
+                  'Lá số Tử Vi')
+              .toString(),
       gender: (json['gender'] ?? nested['gender'] ?? '').toString(),
-      solarDate: (json['solarDate'] ?? nested['solarDate'] ?? '').toString(),
-      lunarDate: (json['lunarDate'] ?? nested['lunarDate'] ?? '').toString(),
+      solarDate:
+          (json['solarDate'] ??
+                  json['solar_date'] ??
+                  nested['solarDate'] ??
+                  nested['solar_date'] ??
+                  '')
+              .toString(),
+      lunarDate:
+          (json['lunarDate'] ??
+                  json['lunar_date'] ??
+                  nested['lunarDate'] ??
+                  nested['lunar_date'] ??
+                  '')
+              .toString(),
       createdAt: (json['createdAt'] ?? json['created_at'] ?? '').toString(),
-      hourBranch: optional(json['hourBranch'] ?? nested['hourBranch']),
-      menh: optional(json['menh'] ?? nested['menh']),
+      hourBranch: optional(
+        json['hourBranch'] ??
+            json['hour_branch'] ??
+            nested['hourBranch'] ??
+            nested['hour_branch'],
+      ),
+      menh: optional(
+        json['menh'] ?? json['element'] ?? nested['menh'] ?? nested['element'],
+      ),
+      cuc: optional(json['cuc'] ?? nested['cuc']),
     );
   }
 

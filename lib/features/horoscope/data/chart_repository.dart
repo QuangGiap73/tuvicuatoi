@@ -5,6 +5,7 @@ import '../../../core/network/dio_provider.dart';
 import '../domain/chart_request.dart';
 import '../domain/chart_result.dart';
 import '../domain/saved_chart.dart';
+import '../domain/saved_chart_detail.dart';
 
 class ChartRepository {
   const ChartRepository(this._dio);
@@ -80,6 +81,28 @@ class ChartRepository {
               .toString(),
         );
       }
+    } on DioException catch (error) {
+      throw ChartException(_errorMessage(error));
+    }
+  }
+
+  Future<SavedChartDetail> getChartDetail(
+    SavedChart chart, {
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/charts/${chart.id}/',
+        cancelToken: cancelToken,
+      );
+      final body = response.data;
+      if (body is! Map) {
+        throw const ChartException('Dữ liệu chi tiết lá số không hợp lệ.');
+      }
+      return SavedChartDetail.fromResponse(
+        chart,
+        Map<String, dynamic>.from(body),
+      );
     } on DioException catch (error) {
       throw ChartException(_errorMessage(error));
     }

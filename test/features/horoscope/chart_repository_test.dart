@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:tuvicuatoi/features/horoscope/data/chart_repository.dart';
 import 'package:tuvicuatoi/features/horoscope/domain/chart_request.dart';
+import 'package:tuvicuatoi/features/horoscope/domain/saved_chart.dart';
 
 void main() {
   const request = ChartRequest(
@@ -124,4 +125,94 @@ void main() {
 
     await repository.deleteChart('chart-id');
   });
+
+  test('getChartDetail keeps complete chart data for AI context', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://tuvicuatoi.com/api'));
+    final adapter = DioAdapter(
+      dio: dio,
+      matcher: const FullHttpRequestMatcher(),
+    );
+    final repository = ChartRepository(dio);
+    const summary = SavedChart(
+      id: 'chart-id',
+      name: 'Giáp',
+      gender: 'Nam',
+      solarDate: '15/08/1995',
+      lunarDate: '20/07/1995',
+      createdAt: '21/10/2026',
+    );
+
+    adapter.onGet(
+      '/charts/chart-id/',
+      (server) => server.reply(200, {
+        'success': true,
+        'data': {
+          'id': 'chart-id',
+          'name': 'Giáp',
+          'gender': 'Nam',
+          'solarDate': '15/08/1995',
+          'chart_data': {
+            'menh': 'Sơn Đầu Hỏa',
+            'palaces': {
+              'Dan': {'name': 'MỆNH'},
+            },
+          },
+        },
+      }),
+    );
+
+    final detail = await repository.getChartDetail(summary);
+
+    expect(detail.summary.id, 'chart-id');
+    expect(detail.chartData['menh'], 'Sơn Đầu Hỏa');
+    expect(detail.chartData['palaces'], isA<Map>());
+  });
+
+  test(
+    'getChartDetail preserves list summary for nested partial response',
+    () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://tuvicuatoi.com/api'));
+      final adapter = DioAdapter(
+        dio: dio,
+        matcher: const FullHttpRequestMatcher(),
+      );
+      final repository = ChartRepository(dio);
+      const summary = SavedChart(
+        id: 'chart-id',
+        name: 'Lá Số Nguyễn Văn Giáp 1995',
+        gender: 'Nam',
+        solarDate: '15/08/1995',
+        lunarDate: '20/07/1995',
+        createdAt: '21/10/2026',
+        hourBranch: 'Giờ Thìn',
+        menh: 'Sơn Đầu Hỏa',
+      );
+
+      adapter.onGet(
+        '/charts/chart-id/',
+        (server) => server.reply(200, {
+          'success': true,
+          'data': {
+            'chart': {
+              'id': 'chart-id',
+              'chart_data': {
+                'palaces': {
+                  'Dan': {'name': 'MỆNH'},
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      final detail = await repository.getChartDetail(summary);
+
+      expect(detail.summary.displayName, 'Nguyễn Văn Giáp 1995');
+      expect(detail.summary.gender, 'Nam');
+      expect(detail.summary.solarDate, '15/08/1995');
+      expect(detail.summary.hourBranch, 'Giờ Thìn');
+      expect(detail.summary.menh, 'Sơn Đầu Hỏa');
+      expect(detail.chartData['palaces'], isA<Map>());
+    },
+  );
 }

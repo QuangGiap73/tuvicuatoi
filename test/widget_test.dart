@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:tuvicuatoi/app/router/app_router.dart';
 import 'package:tuvicuatoi/app/app.dart';
 import 'package:tuvicuatoi/core/storage/token_storage.dart';
 
@@ -33,6 +34,23 @@ void main() {
     expect(find.text('Đăng ký nhanh'), findsOneWidget);
     expect(find.text('Tiếp tục với Google'), findsOneWidget);
     expect(find.text('Chat AI'), findsNothing);
+  });
+
+  testWidgets('AI chat deep link asks unauthenticated users to sign in', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_testApp());
+    await _pumpFrames(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MaterialApp)),
+    );
+
+    container.read(appRouterProvider).go(AppRoute.chat);
+    await _pumpFrames(tester);
+
+    expect(find.text('Đăng nhập để trò chuyện'), findsOneWidget);
+    expect(find.text('ĐĂNG NHẬP'), findsOneWidget);
+    expect(find.text('Chưa có tài khoản? Đăng ký'), findsOneWidget);
   });
 
   testWidgets('can navigate from login to registration', (tester) async {

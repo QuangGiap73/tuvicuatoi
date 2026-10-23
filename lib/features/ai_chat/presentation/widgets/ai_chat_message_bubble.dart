@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/assets/mystic_assets.dart';
-import '../state/ai_chat_state.dart';
+import '../../domain/ai_chat_message.dart';
 
 /// Bong bóng tin nhắn Tử Vi AI hiển thị theo mẫu thiết kế huyền học:
 /// - AI Assistant: Avatar La bàn sao 8 cánh, nền giấy cổ sáng, hỗ trợ định dạng chữ đậm **...**
@@ -19,6 +19,14 @@ class AiChatMessageBubble extends StatelessWidget {
         ? MysticAssets.aiChatBubbleUser
         : MysticAssets.aiChatBubbleAi;
 
+    // Tự động điều chỉnh khoảng đệm đỉnh dựa trên độ dài tin nhắn
+    // Tin nhắn dài (> 80 ký tự): đệm 30dp để chữ không bị đè lên viền hoa văn mép trên
+    // Tin nhắn ngắn: đệm 22dp vừa vặn, thanh lịch
+    final isLongMessage = message.content.length > 80;
+    final topPadding = isUser ? 14.0 : (isLongMessage ? 30.0 : 22.0);
+    final bottomPadding = isUser ? 12.0 : 14.0;
+    final horizontalPadding = isUser ? 17.0 : 18.0;
+
     return RepaintBoundary(
       child: Padding(
         // Không để bong bóng và avatar chạm sát hai viền của khung giấy.
@@ -31,7 +39,7 @@ class AiChatMessageBubble extends StatelessWidget {
           children: [
             if (!isUser) ...[
               Transform.translate(
-                offset: const Offset(0, 6),
+                offset: const Offset(0, 4),
                 child: const _AstrologyStarAvatar(),
               ),
               const SizedBox(width: 8),
@@ -51,10 +59,10 @@ class AiChatMessageBubble extends StatelessWidget {
                     ),
                     Padding(
                       padding: EdgeInsets.fromLTRB(
-                        isUser ? 17 : 18,
-                        isUser ? 13 : 16,
-                        isUser ? 17 : 18,
-                        isUser ? 11 : 14,
+                        horizontalPadding,
+                        topPadding,
+                        horizontalPadding,
+                        bottomPadding,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,8 +112,7 @@ class AiChatMessageBubble extends StatelessWidget {
             ),
             if (isUser) ...[
               const SizedBox(width: 8),
-              // Ảnh frame người dùng có phần viền trên cao hơn avatar, nên
-              // nâng avatar nhẹ để hai mép trên nằm ngang nhau.
+              // Nâng avatar nhẹ để hai mép trên nằm ngang nhau.
               Transform.translate(
                 offset: const Offset(0, 4),
                 child: const _UserAvatar(),

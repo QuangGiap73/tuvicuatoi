@@ -16,6 +16,10 @@ class AuthUser {
     this.packageName,
     this.packageCode,
     this.dailyAiQuestionsLeft,
+    this.dailyQuestionsUsed,
+    this.maxAiQuestions,
+    this.hasUnlimitedAi = false,
+    this.hasAiChatHistory = false,
     this.savedChartsCount,
     this.maxSavedCharts,
     this.referralCode,
@@ -37,6 +41,10 @@ class AuthUser {
   final String? packageName;
   final String? packageCode;
   final int? dailyAiQuestionsLeft;
+  final int? dailyQuestionsUsed;
+  final int? maxAiQuestions;
+  final bool hasUnlimitedAi;
+  final bool hasAiChatHistory;
   final int? savedChartsCount;
   final int? maxSavedCharts;
   final String? referralCode;
@@ -59,13 +67,21 @@ class AuthUser {
                 json['memberSince'])
             ?.toString(),
     coinBalance: (json['coinBalance'] as num?)?.toInt() ?? 0,
-    isPremium: json['isPremium'] == true,
+    isPremium: json['isPremium'] == true || json['is_premium'] == true,
     role: json['role']?.toString() ?? 'member',
     authProvider: json['authProvider']?.toString() ?? 'credentials',
     avatarUrl: json['avatarUrl']?.toString(),
     packageName: json['packageName']?.toString(),
     packageCode: json['packageCode']?.toString(),
     dailyAiQuestionsLeft: (json['dailyAiQuestionsLeft'] as num?)?.toInt(),
+    dailyQuestionsUsed: (json['dailyQuestionsUsed'] as num?)?.toInt(),
+    maxAiQuestions:
+        (json['maxAiQuestions'] as num?)?.toInt() ??
+        (json['aiDailyLimit'] as num?)?.toInt(),
+    hasUnlimitedAi:
+        json['hasUnlimitedAi'] == true || json['has_unlimited_ai'] == true,
+    hasAiChatHistory:
+        json['hasAiChatHistory'] == true || json['has_ai_chat_history'] == true,
     savedChartsCount: (json['savedChartsCount'] as num?)?.toInt(),
     maxSavedCharts: (json['maxSavedCharts'] as num?)?.toInt(),
     referralCode: json['referralCode']?.toString(),

@@ -4,8 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../horoscope/domain/saved_chart.dart';
+import '../domain/ai_chat_message.dart';
 import 'controllers/ai_chat_controller.dart';
+import 'state/ai_chat_state.dart';
+import 'widgets/chat_history_sheet.dart';
 import 'widgets/ai_chat_message_bubble.dart';
 import 'widgets/chart_picker_dialog.dart';
 
@@ -60,16 +64,54 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
     });
   }
 
+  void _revealAssistantStart() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+
+      // Chỉ hé phần đầu câu trả lời; không đẩy đầu bubble dài qua mép trên.
+      position.jumpTo(
+        (position.pixels + 92).clamp(
+          position.minScrollExtent,
+          position.maxScrollExtent,
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authControllerProvider);
+    if (auth.isLoading) {
+      return const _AiChatAccessBoundary(isLoading: true);
+    }
+    if (auth.asData?.value == null) {
+      return const _AiChatAccessBoundary();
+    }
+
     // Tự động cuộn xuống khi có tin nhắn mới (kể cả khi AI phản hồi)
-    ref.listen(aiChatControllerProvider.select((s) => s.messages.length), (
-      prev,
+    ref.listen(
+      aiChatControllerProvider.select(
+        (state) => (
+          count: state.messages.length,
+          lastRole: state.messages.isEmpty ? null : state.messages.last.role,
+        ),
+      ),
+      (previous, next) {
+        if (next.count <= (previous?.count ?? 0)) return;
+        if (next.lastRole == AiChatRole.user) {
+          _scrollToBottom();
+        } else {
+          _revealAssistantStart();
+        }
+      },
+    );
+    ref.listen(aiChatControllerProvider.select((s) => s.errorMessage), (
+      previous,
       next,
     ) {
-      if (next > (prev ?? 0)) {
-        _scrollToBottom();
-      }
+      if (next == null || next == previous) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next)));
     });
 
     final media = MediaQuery.of(context);
@@ -110,6 +152,7 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
                   onBack: () => context.canPop()
                       ? context.pop()
                       : context.go(AppRoute.home),
+                  onHistory: () => showAiChatHistorySheet(context),
                 ),
 
                 // 2. Thẻ lá số đang luận giải (thiết kế gọn gàng để tối đa hóa không gian chat)
@@ -143,12 +186,189 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
 }
 
 // ============================================================================
+// AUTH BOUNDARY
+// ============================================================================
+
+class _AiChatAccessBoundary extends StatelessWidget {
+  const _AiChatAccessBoundary({this.isLoading = false});
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final loginLocation = Uri(
+      path: AppRoute.login,
+      queryParameters: const {'redirect': AppRoute.chat},
+    ).toString();
+    final registerLocation = Uri(
+      path: AppRoute.register,
+      queryParameters: const {'redirect': AppRoute.chat},
+    ).toString();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF030D19),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          RepaintBoundary(
+            child: Image.asset(
+              MysticAssets.myChartsBackground,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              cacheWidth: (width * dpr).round(),
+            ),
+          ),
+          const ColoredBox(color: Color(0x8A010813)),
+          SafeArea(
+            child: Column(
+              children: [
+                _ChatHeader(
+                  onBack: () => context.canPop()
+                      ? context.pop()
+                      : context.go(AppRoute.welcome),
+                  onHistory: isLoading
+                      ? () {}
+                      : () => context.go(loginLocation),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30),
+                      child: isLoading
+                          ? const _AuthCheckingState()
+                          : _LoginRequiredState(
+                              onLogin: () => context.go(loginLocation),
+                              onRegister: () => context.go(registerLocation),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthCheckingState extends StatelessWidget {
+  const _AuthCheckingState();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SizedBox.square(
+        dimension: 30,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.3,
+          color: Color(0xFFFFD568),
+        ),
+      ),
+      SizedBox(height: 13),
+      Text(
+        'Đang kiểm tra phiên đăng nhập...',
+        style: TextStyle(color: Color(0xFFF3E2BD), fontSize: 13),
+      ),
+    ],
+  );
+}
+
+class _LoginRequiredState extends StatelessWidget {
+  const _LoginRequiredState({required this.onLogin, required this.onRegister});
+
+  final VoidCallback onLogin;
+  final VoidCallback onRegister;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    constraints: const BoxConstraints(maxWidth: 360),
+    padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+    decoration: BoxDecoration(
+      color: const Color(0xEE081827),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFD3A144), width: 1.4),
+      boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 18)],
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF10283C),
+            border: Border.all(color: const Color(0xFFDDB04D), width: 1.5),
+          ),
+          child: const Icon(
+            Icons.lock_outline_rounded,
+            color: Color(0xFFFFD568),
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'Đăng nhập để trò chuyện',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFFFFE5A5),
+            fontFamily: 'serif',
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Đăng nhập giúp AI sử dụng đúng lá số, lưu riêng lịch sử trò chuyện '
+          'và đồng bộ quyền lợi tài khoản của bạn.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFFD8CCB7),
+            fontSize: 12,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 18),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onLogin,
+            icon: const Icon(Icons.login_rounded, size: 18),
+            label: const Text('ĐĂNG NHẬP'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD3A144),
+              foregroundColor: const Color(0xFF15202B),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              textStyle: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ),
+        const SizedBox(height: 7),
+        TextButton(
+          onPressed: onRegister,
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFFFD978)),
+          child: const Text(
+            'Chưa có tài khoản? Đăng ký',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ============================================================================
 // 1. HEADER
 // ============================================================================
 
 class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.onBack});
+  const _ChatHeader({required this.onBack, required this.onHistory});
   final VoidCallback onBack;
+  final VoidCallback onHistory;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -193,18 +413,7 @@ class _ChatHeader extends StatelessWidget {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _RoundButton(
-              icon: Icons.history_rounded,
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Lịch sử trò chuyện sẽ được hiển thị tại đây.',
-                    ),
-                  ),
-                );
-              },
-            ),
+            _RoundButton(icon: Icons.history_rounded, onPressed: onHistory),
             const SizedBox(height: 2),
             const Text(
               'Lịch sử',
@@ -379,7 +588,7 @@ class _CurrentChartCard extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        chart?.displayName ?? 'Giáp',
+                        chart?.displayName ?? 'Chưa chọn lá số',
                         style: const TextStyle(
                           color: Color(0xFF22140A),
                           fontFamily: 'serif',
@@ -433,24 +642,24 @@ class _CurrentChartCard extends ConsumerWidget {
                           width: 1.2,
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.sync_rounded,
                             color: Color(0xFFFFDC88),
                             size: 13,
                           ),
-                          SizedBox(width: 3),
+                          const SizedBox(width: 3),
                           Text(
-                            'Đổi lá số',
-                            style: TextStyle(
+                            chart == null ? 'Chọn lá số' : 'Đổi lá số',
+                            style: const TextStyle(
                               color: Color(0xFFFFE3A0),
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          Icon(
+                          const Icon(
                             Icons.chevron_right_rounded,
                             color: Color(0xFFFFDC88),
                             size: 14,
@@ -470,16 +679,23 @@ class _CurrentChartCard extends ConsumerWidget {
 
   String _chartSummary(SavedChart? chart) {
     if (chart == null) {
-      return 'Nam  •  Sơn Đầu Hỏa  •  Kim Tứ Cục\n15/08/1995 (DL)  •  Giờ Giáp Thìn';
+      return 'Hãy chọn một lá số đã lưu để bắt đầu luận giải cùng AI.';
     }
     final gender = chart.gender.trim().isEmpty ? 'Chưa rõ' : chart.gender;
     final menh = chart.menh?.trim().isNotEmpty == true
         ? chart.menh!.trim()
         : 'Chưa cập nhật bản mệnh';
+    final cuc = chart.cuc?.trim().isNotEmpty == true ? '  •  ${chart.cuc}' : '';
     final date = chart.solarDate.trim().isEmpty
         ? 'Chưa cập nhật ngày sinh'
         : '${chart.solarDate} (DL)';
-    return '$gender  •  $menh\n$date  •  Giờ ${chart.hourBranch ?? 'chưa rõ'}';
+    final rawHour = chart.hourBranch?.trim() ?? '';
+    final hour = rawHour.isEmpty
+        ? 'Giờ chưa rõ'
+        : rawHour.toLowerCase().startsWith('giờ ')
+        ? rawHour
+        : 'Giờ $rawHour';
+    return '$gender  •  $menh$cuc\n$date  •  $hour';
   }
 }
 
@@ -549,10 +765,17 @@ class _TopicSelector extends ConsumerWidget {
 
   static const topics = <(IconData, String)>[
     (Icons.auto_awesome, 'Mệnh'),
-    (Icons.work_outline_rounded, 'Quan Lộc'),
-    (Icons.toll_outlined, 'Tài Bạch'),
-    (Icons.favorite_border_rounded, 'Phu Thê'),
+    (Icons.family_restroom_rounded, 'Phụ Mẫu'),
     (Icons.spa_outlined, 'Phúc Đức'),
+    (Icons.home_work_outlined, 'Điền Trạch'),
+    (Icons.work_outline_rounded, 'Quan Lộc'),
+    (Icons.groups_2_outlined, 'Nô Bộc'),
+    (Icons.travel_explore_rounded, 'Thiên Di'),
+    (Icons.health_and_safety_outlined, 'Tật Ách'),
+    (Icons.toll_outlined, 'Tài Bạch'),
+    (Icons.child_care_outlined, 'Tử Tức'),
+    (Icons.favorite_border_rounded, 'Phu Thê'),
+    (Icons.diversity_1_outlined, 'Huynh Đệ'),
   ];
 
   @override
@@ -722,93 +945,280 @@ class _ConversationList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final messages = ref.watch(
-      aiChatControllerProvider.select((state) => state.messages),
+    final chat = ref.watch(
+      aiChatControllerProvider.select(
+        (state) => (
+          messages: state.messages,
+          selectedChart: state.selectedChart,
+          phase: state.phase,
+          waiting: state.isWaitingForFirstToken,
+        ),
+      ),
     );
+    final messages = chat.messages;
 
-    return ListView.builder(
+    if (chat.selectedChart == null) {
+      return const _NoSelectedChartState();
+    }
+    final onlyWelcome = messages.length == 1 && messages.single.id == 'welcome';
+    if (chat.phase == AiChatPhase.loadingChart ||
+        (chat.phase == AiChatPhase.loadingHistory && onlyWelcome)) {
+      return const _ChatLoadingState();
+    }
+    if (onlyWelcome && !chat.waiting) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: ListView(
+              controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(0, 14, 0, 82),
+              children: [
+                RepaintBoundary(
+                  child: AiChatMessageBubble(
+                    key: ValueKey(messages.single.id),
+                    message: messages.single,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 6,
+            child: RepaintBoundary(child: _Suggestions(onTap: onSuggestion)),
+          ),
+        ],
+      );
+    }
+
+    final conversationItemCount = messages.length + (chat.waiting ? 1 : 0);
+    return CustomScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.only(top: 14, bottom: 6),
-      itemCount: messages.length + 1,
-      itemBuilder: (context, index) {
-        // Tin nhắn hội thoại
-        if (index < messages.length) {
-          final message = messages[index];
-          return RepaintBoundary(
-            child: AiChatMessageBubble(
-              key: ValueKey(message.id),
-              message: message,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.only(top: 14),
+          sliver: SliverList.builder(
+            itemCount: conversationItemCount,
+            itemBuilder: (context, index) {
+              if (index < messages.length) {
+                final message = messages[index];
+                return RepaintBoundary(
+                  child: AiChatMessageBubble(
+                    key: ValueKey(message.id),
+                    message: message,
+                  ),
+                );
+              }
+              return const _TypingIndicator();
+            },
+          ),
+        ),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          fillOverscroll: false,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _Suggestions(onTap: onSuggestion),
+              ),
             ),
-          );
-        }
-
-        // Khối gợi ý câu hỏi ở cuối (gọn gàng, không che khuất tin nhắn)
-        return RepaintBoundary(child: _Suggestions(onTap: onSuggestion));
-      },
+          ),
+        ),
+      ],
     );
   }
+}
+
+class _ChatLoadingState extends StatelessWidget {
+  const _ChatLoadingState();
+
+  @override
+  Widget build(BuildContext context) => const Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox.square(
+          dimension: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: Color(0xFF9A6B28),
+          ),
+        ),
+        SizedBox(height: 11),
+        Text(
+          'Đang tải lá số và lịch sử trò chuyện...',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFF6D5131),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _NoSelectedChartState extends ConsumerWidget {
+  const _NoSelectedChartState();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Center(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 36),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.auto_awesome_rounded,
+            color: Color(0xFF9A6B28),
+            size: 36,
+          ),
+          const SizedBox(height: 9),
+          const Text(
+            'Chọn lá số để bắt đầu',
+            style: TextStyle(
+              color: Color(0xFF3A2615),
+              fontFamily: 'serif',
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'AI cần dữ liệu lá số để đưa ra phần luận giải phù hợp với bạn.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF7A6245),
+              fontSize: 11.5,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 13),
+          FilledButton.icon(
+            onPressed: () async {
+              final selected = await showChartPickerDialog(context);
+              if (selected == null || !context.mounted) return;
+              await ref
+                  .read(aiChatControllerProvider.notifier)
+                  .selectChart(selected);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF082033),
+              foregroundColor: const Color(0xFFFFD978),
+              side: const BorderSide(color: Color(0xFFC99A3D)),
+            ),
+            icon: const Icon(Icons.description_outlined, size: 17),
+            label: const Text(
+              'CHỌN LÁ SỐ',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ============================================================================
 // 6. GỢI Ý CÂU HỎI NHANH (Thiết kế thanh thoát)
 // ============================================================================
 
-class _Suggestions extends StatelessWidget {
+class _Suggestions extends ConsumerWidget {
   const _Suggestions({required this.onTap});
   final ValueChanged<String> onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 6, bottom: 4),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Color(0xFF3C2612), size: 13),
-            SizedBox(width: 4),
-            Text(
-              'Gợi ý câu hỏi cho bạn',
-              style: TextStyle(
-                color: Color(0xFF3C2612),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(
+      aiChatControllerProvider.select((state) => state.selectedTopic),
+    );
+    final palace = AiChatController.palaceNames[selected];
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
             children: [
-              _SuggestionCard(
-                icon: Icons.business_center_rounded,
-                text: 'Phân tích\ncung Quan Lộc',
-                onTap: () => onTap('Phân tích cung Quan Lộc của tôi'),
-              ),
-              const SizedBox(width: 6),
-              _SuggestionCard(
-                icon: Icons.favorite_rounded,
-                text: 'Tình duyên\nnăm 2026',
-                onTap: () => onTap('Dự đoán tình duyên năm 2026'),
-              ),
-              const SizedBox(width: 6),
-              _SuggestionCard(
-                icon: Icons.auto_awesome_rounded,
-                text: 'Gợi ý cải vận',
-                onTap: () => onTap('Gợi ý phương pháp cải vận theo lá số'),
+              Icon(Icons.auto_awesome, color: Color(0xFF3C2612), size: 13),
+              SizedBox(width: 4),
+              Text(
+                'Gợi ý câu hỏi cho bạn',
+                style: TextStyle(
+                  color: Color(0xFF3C2612),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 43,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _SuggestionCard(
+                    icon: Icons.business_center_rounded,
+                    text: 'Phân tích\ncung $palace',
+                    onTap: () => onTap('Phân tích cung $palace của tôi'),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _SuggestionCard(
+                    icon: Icons.favorite_rounded,
+                    text: 'Điểm mạnh\ncủa cung này',
+                    onTap: () => onTap('Cung $palace thể hiện điểm mạnh gì?'),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _SuggestionCard(
+                    icon: Icons.auto_awesome_rounded,
+                    text: 'Điều cần\nlưu ý',
+                    onTap: () => onTap('Tôi cần chú ý điều gì ở cung $palace?'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.fromLTRB(18, 2, 18, 12),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Color(0xFF9A6B28),
         ),
-      ],
+      ),
     ),
   );
 }
@@ -825,51 +1235,68 @@ class _SuggestionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Ink(
-        padding: const EdgeInsets.fromLTRB(7, 5, 10, 5),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7E8C8),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxWidth < 96;
+      final iconSize = compact ? 22.0 : 25.0;
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFD4AA64), width: 1.0),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x18000000),
-              blurRadius: 2,
-              offset: Offset(0, 1),
+          child: Ink(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: compact ? 5 : 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7E8C8),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD4AA64), width: 1.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              children: [
+                Container(
+                  width: iconSize,
+                  height: iconSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5CE9F),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: const Color(0xFF4A341C),
+                    size: compact ? 13 : 14,
+                  ),
+                ),
+                SizedBox(width: compact ? 4 : 6),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      text,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        color: Color(0xFF2A190C),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 25,
-              height: 25,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE5CE9F),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(icon, color: const Color(0xFF4A341C), size: 14),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: const TextStyle(
-                color: Color(0xFF2A190C),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                height: 1.15,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
+      );
+    },
   );
 }
 
@@ -877,15 +1304,20 @@ class _SuggestionCard extends StatelessWidget {
 // 7. THANH NHẬP LIỆU (frame_chat_A.png + icon_gui_A.png)
 // ============================================================================
 
-class _Composer extends StatelessWidget {
+class _Composer extends ConsumerWidget {
   const _Composer({required this.controller, required this.onSend});
 
   final TextEditingController controller;
   final VoidCallback onSend;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
+    final enabled = ref.watch(
+      aiChatControllerProvider.select(
+        (state) => state.selectedChartDetail != null && !state.isBusy,
+      ),
+    );
 
     return SizedBox(
       height: 132,
@@ -908,10 +1340,13 @@ class _Composer extends StatelessWidget {
             height: 44,
             child: TextField(
               controller: controller,
+              enabled: enabled,
               minLines: 1,
               maxLines: 1,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
+              onSubmitted: (_) {
+                if (enabled) onSend();
+              },
               style: const TextStyle(
                 color: Color(0xFF3B2B1B),
                 fontSize: 12.5,
@@ -944,17 +1379,20 @@ class _Composer extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: onSend,
+                onTap: enabled ? onSend : null,
                 customBorder: const CircleBorder(),
-                child: RepaintBoundary(
-                  child: Image.asset(
-                    MysticAssets.aiChatSend,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.contain,
-                    cacheWidth: (48 * dpr).round(),
-                    cacheHeight: (48 * dpr).round(),
-                    filterQuality: FilterQuality.medium,
+                child: Opacity(
+                  opacity: enabled ? 1 : .48,
+                  child: RepaintBoundary(
+                    child: Image.asset(
+                      MysticAssets.aiChatSend,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.contain,
+                      cacheWidth: (48 * dpr).round(),
+                      cacheHeight: (48 * dpr).round(),
+                      filterQuality: FilterQuality.medium,
+                    ),
                   ),
                 ),
               ),

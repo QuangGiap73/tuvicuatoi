@@ -6,6 +6,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/welcome_page.dart';
 import '../../features/ai_chat/presentation/ai_chat_page.dart';
+import '../../features/daily_fortune/presentation/daily_fortune_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/horoscope/presentation/horoscope_page.dart';
 import '../../features/horoscope/presentation/chart_result_page.dart';
@@ -22,6 +23,7 @@ abstract final class AppRoute {
   static const chartResult = '/horoscope/result';
   static const myCharts = '/profile/charts';
   static const chat = '/ai-chat';
+  static const dailyFortune = '/daily-fortune';
   static const wallet = '/wallet';
   static const profile = '/profile';
   static const personalProfile = '/profile/personal';
@@ -43,13 +45,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == AppRoute.login ||
           location == AppRoute.register;
       final isGate = location == AppRoute.authGate;
+      final isGuestChat = location == AppRoute.chat;
 
       if (auth.isLoading) {
-        return isAuthRoute || isGate ? null : AppRoute.authGate;
+        return isAuthRoute || isGate || isGuestChat ? null : AppRoute.authGate;
       }
       final isAuthenticated = auth.asData?.value != null;
-      if (isAuthenticated) return isAuthRoute || isGate ? AppRoute.home : null;
-      return isAuthRoute ? null : AppRoute.welcome;
+      if (isAuthenticated) {
+        if (!isAuthRoute && !isGate) return null;
+        final redirect = state.uri.queryParameters['redirect'];
+        return redirect == AppRoute.chat ? AppRoute.chat : AppRoute.home;
+      }
+      return isAuthRoute || isGuestChat ? null : AppRoute.welcome;
     },
     routes: [
       GoRoute(path: AppRoute.authGate, builder: (_, _) => const AuthGatePage()),
@@ -61,7 +68,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         branches: [
           StatefulShellBranch(
             routes: [
-              GoRoute(path: AppRoute.home, builder: (_, _) => const HomePage()),
+              GoRoute(
+                path: AppRoute.home,
+                builder: (_, _) => const HomePage(),
+                routes: [
+                  GoRoute(
+                    path: 'daily-fortune',
+                    builder: (_, _) => const DailyFortunePage(),
+                  ),
+                ],
+              ),
             ],
           ),
           StatefulShellBranch(
