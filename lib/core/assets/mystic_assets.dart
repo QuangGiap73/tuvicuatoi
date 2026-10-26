@@ -34,10 +34,13 @@ abstract final class MysticAssets {
   static const profilePremiumUpgradeBanner =
       '$profile/premium_upgrade_banner.png';
   static const bottomFrameA = '$bottom/Bottom_frame_A.png';
+  static const bottomFrameB = '$bottom/bottom_B.png';
   static const largeFrameA = '$frame/frame_A.png';
   static const upgradeFrameB = '$frame/frame_B.png';
   static const dailyFortuneButtonFrame = '$frame/frame_D.png';
   static const horoscopeFormFrame = '$frame/frame_la_so.png';
+  static const palaceDetailFrame = '$frame/frame_A_3.png';
+  static const palaceDetailBanner = '$frame/frame_A_4.png';
   static const myChartCardFrame = '$frame/frame_la_so_cua_toi.png';
   static const aiChatBubble = '$chat/chat_A.png';
   static const aiChatBubbleAi = '$chat/frame_ai_chat.png';

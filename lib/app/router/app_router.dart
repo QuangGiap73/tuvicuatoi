@@ -11,6 +11,8 @@ import '../../features/home/presentation/home_page.dart';
 import '../../features/horoscope/presentation/horoscope_page.dart';
 import '../../features/horoscope/presentation/chart_result_page.dart';
 import '../../features/horoscope/presentation/my_charts_page.dart';
+import '../../features/interpretation/presentation/interpretation_page.dart';
+import '../../features/palace_detail/presentation/palace_detail_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/profile/presentation/personal_profile_page.dart';
 import '../../features/profile/presentation/edit_profile_page.dart';
@@ -21,6 +23,8 @@ abstract final class AppRoute {
   static const home = '/';
   static const horoscope = '/horoscope';
   static const chartResult = '/horoscope/result';
+  static const interpretation = '/horoscope/interpretation';
+  static const palaceDetail = '/horoscope/palace-detail';
   static const myCharts = '/profile/charts';
   static const chat = '/ai-chat';
   static const dailyFortune = '/daily-fortune';
@@ -133,6 +137,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoute.chartResult,
         builder: (_, _) => const ChartResultPage(),
+      ),
+      GoRoute(
+        path: AppRoute.interpretation,
+        builder: (_, _) => const InterpretationPage(),
+      ),
+      GoRoute(
+        path: AppRoute.palaceDetail,
+        builder: (_, _) => const PalaceDetailPage(),
       ),
     ],
   );

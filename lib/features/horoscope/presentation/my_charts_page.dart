@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../ai_chat/presentation/controllers/ai_chat_controller.dart';
 import '../../auth/domain/auth_user.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import '../../interpretation/presentation/controllers/interpretation_controller.dart';
 import 'providers/chart_form_providers.dart';
 import 'widgets/saved_chart_card.dart';
 
@@ -105,11 +107,23 @@ class MyChartsPage extends ConsumerWidget {
                                     key: ValueKey(chart.id),
                                     chart: chart,
                                     isDeleting: state.deletingId == chart.id,
-                                    onInterpret: () => _comingSoon(
-                                      context,
-                                      'Luận giải ${chart.displayName}',
-                                    ),
-                                    onAskAi: () => context.go(AppRoute.chat),
+                                    onInterpret: () {
+                                      ref
+                                          .read(
+                                            interpretationControllerProvider
+                                                .notifier,
+                                          )
+                                          .openSaved(chart);
+                                      context.push(AppRoute.interpretation);
+                                    },
+                                    onAskAi: () {
+                                      ref
+                                          .read(
+                                            aiChatControllerProvider.notifier,
+                                          )
+                                          .selectChart(chart);
+                                      context.go(AppRoute.chat);
+                                    },
                                     onDelete: () =>
                                         _confirmDelete(context, ref, chart.id),
                                   ),
@@ -173,13 +187,6 @@ class MyChartsPage extends ConsumerWidget {
       ),
     );
   }
-
-  void _comingSoon(BuildContext context, String feature) =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$feature sẽ được hoàn thiện ở bước tiếp theo.'),
-        ),
-      );
 }
 
 class _MyChartsHero extends StatelessWidget {

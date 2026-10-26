@@ -12,11 +12,15 @@ class ChartRepository {
 
   final Dio _dio;
 
-  Future<ChartResult> generate(ChartRequest request) async {
+  Future<ChartResult> generate(
+    ChartRequest request, {
+    CancelToken? cancelToken,
+  }) async {
     try {
       final response = await _dio.post<Object?>(
         '/chart/generate',
         data: request.toJson(),
+        cancelToken: cancelToken,
       );
       final body = response.data;
       if (body is! Map || body['success'] != true || body['data'] is! Map) {
@@ -28,11 +32,16 @@ class ChartRepository {
         Map<String, dynamic>.from(body['data'] as Map),
       );
     } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) rethrow;
       throw ChartException(_errorMessage(error));
     }
   }
 
-  Future<String> save(ChartRequest request, ChartResult result) async {
+  Future<String> save(
+    ChartRequest request,
+    ChartResult result, {
+    CancelToken? cancelToken,
+  }) async {
     try {
       final response = await _dio.post<Object?>(
         '/charts/save/',
@@ -41,6 +50,7 @@ class ChartRepository {
           'name': 'Lá Số ${request.name.trim()} ${request.year}',
           'chart_data': result.rawData,
         },
+        cancelToken: cancelToken,
       );
       final body = response.data;
       if (body is! Map || body['success'] != true) {
@@ -48,6 +58,7 @@ class ChartRepository {
       }
       return (body['chartId'] ?? body['id'] ?? '').toString();
     } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) rethrow;
       throw ChartException(_errorMessage(error));
     }
   }

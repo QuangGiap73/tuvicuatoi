@@ -93,64 +93,76 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
     );
     final media = MediaQuery.of(context);
     final keyboardOpen = media.viewInsets.bottom > 0;
+    final router = ref.watch(appRouterProvider);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final minX = _edgeMargin;
-        final maxX = math.max(
-          minX,
-          constraints.maxWidth - _launcherSize.width - _edgeMargin,
-        );
-        final minY = media.padding.top + _edgeMargin;
-        final maxY = math.max(
-          minY,
-          constraints.maxHeight -
-              _launcherSize.height -
-              media.padding.bottom -
-              84,
-        );
-        final defaultPosition = Offset(maxX, maxY);
-        final rawPosition = _position ?? defaultPosition;
-        final position = Offset(
-          rawPosition.dx.clamp(minX, maxX),
-          rawPosition.dy.clamp(minY, maxY),
-        );
+    return ListenableBuilder(
+      listenable: router.routeInformationProvider,
+      builder: (context, _) {
+        final hideOnPalaceDetail = router
+            .routeInformationProvider
+            .value
+            .uri
+            .path
+            .contains('palace-detail');
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final minX = _edgeMargin;
+            final maxX = math.max(
+              minX,
+              constraints.maxWidth - _launcherSize.width - _edgeMargin,
+            );
+            final minY = media.padding.top + _edgeMargin;
+            final maxY = math.max(
+              minY,
+              constraints.maxHeight -
+                  _launcherSize.height -
+                  media.padding.bottom -
+                  84,
+            );
+            final defaultPosition = Offset(maxX, maxY);
+            final rawPosition = _position ?? defaultPosition;
+            final position = Offset(
+              rawPosition.dx.clamp(minX, maxX),
+              rawPosition.dy.clamp(minY, maxY),
+            );
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            widget.child,
-            if (isAuthenticated && !keyboardOpen)
-              Positioned(
-                left: position.dx,
-                top: position.dy,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onPanUpdate: (details) {
-                    final current = _position ?? position;
-                    setState(() {
-                      _position = Offset(
-                        (current.dx + details.delta.dx).clamp(minX, maxX),
-                        (current.dy + details.delta.dy).clamp(minY, maxY),
-                      );
-                    });
-                  },
-                  onDoubleTap: () =>
-                      setState(() => _position = defaultPosition),
-                  child: RepaintBoundary(
-                    child: Semantics(
-                      button: true,
-                      label:
-                          'Mở trợ lý Chat AI, cố vấn 24 trên 7. Có thể kéo để di chuyển.',
-                      child: _ChatAiPill(
-                        pulse: _pulseController,
-                        onTap: () => _openChat(isAuthenticated),
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                widget.child,
+                if (isAuthenticated && !keyboardOpen && !hideOnPalaceDetail)
+                  Positioned(
+                    left: position.dx,
+                    top: position.dy,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onPanUpdate: (details) {
+                        final current = _position ?? position;
+                        setState(() {
+                          _position = Offset(
+                            (current.dx + details.delta.dx).clamp(minX, maxX),
+                            (current.dy + details.delta.dy).clamp(minY, maxY),
+                          );
+                        });
+                      },
+                      onDoubleTap: () =>
+                          setState(() => _position = defaultPosition),
+                      child: RepaintBoundary(
+                        child: Semantics(
+                          button: true,
+                          label:
+                              'Mở trợ lý Chat AI, cố vấn 24 trên 7. Có thể kéo để di chuyển.',
+                          child: _ChatAiPill(
+                            pulse: _pulseController,
+                            onTap: () => _openChat(isAuthenticated),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-          ],
+              ],
+            );
+          },
         );
       },
     );

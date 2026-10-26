@@ -13,10 +13,9 @@ final chartFormControllerProvider =
     );
 
 final chartGenerationControllerProvider =
-    NotifierProvider.autoDispose<
-      ChartGenerationController,
-      ChartGenerationState
-    >(ChartGenerationController.new);
+    NotifierProvider<ChartGenerationController, ChartGenerationState>(
+      ChartGenerationController.new,
+    );
 
 final myChartsControllerProvider =
     NotifierProvider.autoDispose<MyChartsController, MyChartsState>(

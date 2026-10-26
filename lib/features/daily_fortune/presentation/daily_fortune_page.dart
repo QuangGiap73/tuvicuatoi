@@ -9,6 +9,11 @@ import '../../../core/widgets/mystic_scaffold.dart';
 import 'controllers/daily_fortune_controller.dart';
 import 'widgets/daily_fortune_date_selector.dart';
 import 'widgets/daily_fortune_empty_state.dart';
+import 'widgets/daily_calendar_card.dart';
+import 'widgets/active_fortune_chart_card.dart';
+import 'widgets/fortune_guidance_card.dart';
+import 'widgets/fortune_hours_card.dart';
+import 'widgets/fortune_overview_card.dart';
 
 class DailyFortunePage extends ConsumerWidget {
   const DailyFortunePage({super.key});
@@ -72,7 +77,30 @@ class DailyFortunePage extends ConsumerWidget {
                           .load(),
                     ),
                     const SizedBox(height: MysticSpacing.md),
-                    DailyFortuneEmptyState(date: state.selectedDate),
+                    if (state.fortune == null)
+                      DailyFortuneEmptyState(date: state.selectedDate)
+                    else ...[
+                      DailyCalendarCard(fortune: state.fortune!),
+                      const SizedBox(height: 10),
+                      ActiveFortuneChartCard(
+                        charts: state.charts,
+                        selected: state.selectedChart,
+                        loading: state.isChartsLoading,
+                        onChanged: (chart) => ref
+                            .read(dailyFortuneControllerProvider.notifier)
+                            .selectChart(chart),
+                      ),
+                      const SizedBox(height: 10),
+                      FortuneOverviewCard(
+                        fortune: state.fortune!,
+                        loading: state.isReadingLoading,
+                        errorMessage: state.readingErrorMessage,
+                      ),
+                      const SizedBox(height: 10),
+                      FortuneGuidanceCard(fortune: state.fortune!),
+                      const SizedBox(height: 10),
+                      FortuneHoursCard(fortune: state.fortune!),
+                    ],
                   ],
                 ),
               ),

@@ -4,6 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../ai_chat/presentation/controllers/ai_chat_controller.dart';
+import '../../interpretation/domain/interpretation_models.dart';
+import '../../interpretation/presentation/controllers/interpretation_controller.dart';
+import '../../palace_detail/domain/palace_detail_models.dart';
+import '../../palace_detail/presentation/controllers/palace_detail_controller.dart';
 import '../domain/chart_result.dart';
 import 'providers/chart_form_providers.dart';
 import 'widgets/chart_palace_board.dart';
@@ -70,14 +75,20 @@ class ChartResultPage extends ConsumerWidget {
                         isSaved: state.isSaved,
                         isSaving: state.isSaving,
                         onSave: () => _save(context, ref),
-                        onInterpret: () => _comingSoon(context, 'Luận giải'),
-                        onAskAi: () => context.push(AppRoute.chat),
+                        onInterpret: () => _openInterpretation(context, ref),
+                        onAskAi: () {
+                          ref
+                              .read(aiChatControllerProvider.notifier)
+                              .useGeneratedChart(result);
+                          context.push(AppRoute.chat);
+                        },
                         onExport: () => _comingSoon(context, 'Xuất PDF'),
                       ),
                       const SizedBox(height: 10),
                       ChartPalaceBoard(
                         result: result,
-                        onPalaceTap: (palace) => _showPalace(context, palace),
+                        onPalaceTap: (palace) =>
+                            _openPalaceDetail(context, ref, result, palace),
                       ),
                       const SizedBox(height: 12),
                       const _DetailHint(),
@@ -109,42 +120,45 @@ class ChartResultPage extends ConsumerWidget {
     );
   }
 
-  void _showPalace(BuildContext context, ChartPalace palace) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFFF7E7BF),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'CUNG ${palace.name}',
-                style: const TextStyle(
-                  color: Color(0xFF4B3019),
-                  fontFamily: 'serif',
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Can chi: ${palace.canChi} · Ngũ hành: ${palace.element}'),
-              Text(
-                'Chính tinh: ${palace.mainStars.map((e) => e.name).join(', ')}',
-              ),
-              Text('Cát tinh: ${palace.luckyStars.join(', ')}'),
-              Text('Hung tinh: ${palace.badStars.join(', ')}'),
-              Text('Vòng Tràng Sinh: ${palace.vongTrangSinh}'),
-            ],
-          ),
-        ),
-      ),
+  void _openInterpretation(
+    BuildContext context,
+    WidgetRef ref, {
+    String? palaceName,
+  }) {
+    final state = ref.read(chartGenerationControllerProvider);
+    final request = state.request;
+    final result = state.result;
+    if (request == null || result == null) return;
+    final controller = ref.read(interpretationControllerProvider.notifier);
+    controller.openGenerated(
+      request: request,
+      result: result,
+      savedChartId: state.savedChartId,
     );
+    if (palaceName != null) {
+      controller.selectTab(InterpretationTab.palaces);
+      controller.selectPalace(palaceName);
+    }
+    context.push(AppRoute.interpretation);
+  }
+
+  void _openPalaceDetail(
+    BuildContext context,
+    WidgetRef ref,
+    ChartResult result,
+    ChartPalace palace,
+  ) {
+    final generation = ref.read(chartGenerationControllerProvider);
+    ref
+        .read(palaceDetailControllerProvider.notifier)
+        .open(
+          PalaceDetailContext(
+            chart: result,
+            palace: palace,
+            chartId: generation.savedChartId,
+          ),
+        );
+    context.push(AppRoute.palaceDetail);
   }
 
   void _comingSoon(BuildContext context, String feature) {

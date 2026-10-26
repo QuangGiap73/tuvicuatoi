@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tuvicuatoi/features/daily_fortune/data/daily_fortune_repository.dart';
 import 'package:tuvicuatoi/features/daily_fortune/domain/daily_fortune.dart';
+import 'package:tuvicuatoi/features/daily_fortune/domain/daily_fortune_reading.dart';
 import 'package:tuvicuatoi/features/daily_fortune/presentation/daily_fortune_page.dart';
 
 void main() {
@@ -77,4 +78,11 @@ class _FakeDailyFortuneRepository implements DailyFortuneRepository {
       canChiYear: 'Bính Ngọ',
     );
   }
+
+  @override
+  Future<DailyFortuneReading> getReading({
+    required DateTime date,
+    required Map<String, dynamic> chartData,
+    CancelToken? cancelToken,
+  }) async => const DailyFortuneReading();
 }

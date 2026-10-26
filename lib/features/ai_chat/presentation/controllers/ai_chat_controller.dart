@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_provider.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../horoscope/data/chart_repository.dart';
+import '../../../horoscope/domain/chart_result.dart';
 import '../../../horoscope/domain/saved_chart.dart';
+import '../../../horoscope/domain/saved_chart_detail.dart';
 import '../../data/ai_chat_history_store.dart';
 import '../../data/ai_chat_repository.dart';
 import '../../domain/ai_chat_message.dart';
@@ -45,6 +47,31 @@ class AiChatController extends Notifier<AiChatState> {
     if (index < 0 || index >= palaceNames.length) return;
     if (index == state.selectedTopic) return;
     state = state.copyWith(selectedTopic: index);
+  }
+
+  void useGeneratedChart(ChartResult result) {
+    ++_chartSession;
+    _chartCancelToken?.cancel('Dùng lá số vừa lập');
+    _historyCancelToken?.cancel('Dùng lá số vừa lập');
+    _sendCancelToken?.cancel('Dùng lá số vừa lập');
+    final summary = SavedChart(
+      id: result.id,
+      name: result.fullName,
+      gender: result.gender,
+      solarDate: result.solarDate,
+      lunarDate: result.lunarDate,
+      createdAt: '',
+      hourBranch: result.hourBranch,
+      menh: result.menh,
+      cuc: result.cuc,
+    );
+    state = AiChatState(
+      selectedChart: summary,
+      selectedChartDetail: SavedChartDetail(
+        summary: summary,
+        chartData: result.rawData,
+      ),
+    );
   }
 
   Future<void> selectChart(SavedChart chart) async {
@@ -355,6 +382,4 @@ class AiChatController extends Notifier<AiChatState> {
 }
 
 final aiChatControllerProvider =
-    NotifierProvider.autoDispose<AiChatController, AiChatState>(
-      AiChatController.new,
-    );
+    NotifierProvider<AiChatController, AiChatState>(AiChatController.new);
