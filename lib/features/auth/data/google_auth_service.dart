@@ -13,7 +13,9 @@ class GoogleAuthService {
 
   Future<String> getIdToken() async {
     if (kIsWeb) {
-      throw const AuthException('Nút Google hiện chỉ được cấu hình cho Android và iOS.');
+      throw const AuthException(
+        'Nút Google hiện chỉ được cấu hình cho Android và iOS.',
+      );
     }
     if (AppConfig.googleServerClientId.isEmpty) {
       throw const AuthException(
@@ -22,32 +24,42 @@ class GoogleAuthService {
     }
 
     await (_initialization ??= _googleSignIn.initialize(
-      clientId: defaultTargetPlatform == TargetPlatform.iOS && AppConfig.googleIosClientId.isNotEmpty
+      clientId:
+          defaultTargetPlatform == TargetPlatform.iOS &&
+              AppConfig.googleIosClientId.isNotEmpty
           ? AppConfig.googleIosClientId
           : null,
       serverClientId: AppConfig.googleServerClientId,
     ));
 
     if (!_googleSignIn.supportsAuthenticate()) {
-      throw const AuthException('Thiết bị này không hỗ trợ luồng đăng nhập Google hiện tại.');
+      throw const AuthException(
+        'Thiết bị này không hỗ trợ luồng đăng nhập Google hiện tại.',
+      );
     }
 
     try {
       final account = await _googleSignIn.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
-        throw const AuthException('Google không trả về ID Token để xác thực với máy chủ.');
+        throw const AuthException(
+          'Google không trả về ID Token để xác thực với máy chủ.',
+        );
       }
       return idToken;
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
         throw const AuthException('Bạn đã hủy đăng nhập Google.');
       }
-      throw AuthException('Không thể đăng nhập Google: ${error.description ?? error.code.name}');
+      throw AuthException(
+        'Không thể đăng nhập Google: ${error.description ?? error.code.name}',
+      );
     }
   }
 
   Future<void> signOut() => _googleSignIn.signOut();
 }
 
-final googleAuthServiceProvider = Provider<GoogleAuthService>((_) => GoogleAuthService());
+final googleAuthServiceProvider = Provider<GoogleAuthService>(
+  (_) => GoogleAuthService(),
+);

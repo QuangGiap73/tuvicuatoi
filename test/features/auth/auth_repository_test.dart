@@ -199,4 +199,50 @@ void main() {
     expect(user.hasPdfExport, isTrue);
     expect(user.hasPriorityServer, isTrue);
   });
+
+  test('forgot password completes the documented OTP flow', () async {
+    adapter.onPost(
+      '/auth/forgot-password/',
+      (server) => server.reply(200, {
+        'success': true,
+        'expiresInMinutes': 15,
+        'emailSent': true,
+      }),
+      data: {'email': 'member@example.com'},
+    );
+    adapter.onPost(
+      '/auth/verify-reset-code/',
+      (server) => server.reply(200, {
+        'success': true,
+        'valid': true,
+        'recoveryToken': 'recovery-token',
+      }),
+      data: {'email': 'member@example.com', 'code': '839201'},
+    );
+    adapter.onPost(
+      '/auth/reset-password/',
+      (server) => server.reply(200, {'success': true}),
+      data: {
+        'email': 'member@example.com',
+        'reset_token': 'recovery-token',
+        'new_password': 'MatKhauMoi@2026',
+      },
+    );
+
+    final expires = await repository.requestPasswordReset(
+      ' member@example.com ',
+    );
+    final token = await repository.verifyPasswordResetCode(
+      email: 'member@example.com',
+      code: '839201',
+    );
+    await repository.resetPassword(
+      email: 'member@example.com',
+      resetToken: token,
+      newPassword: 'MatKhauMoi@2026',
+    );
+
+    expect(expires, 15);
+    expect(token, 'recovery-token');
+  });
 }

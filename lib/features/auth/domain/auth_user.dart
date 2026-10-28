@@ -69,6 +69,42 @@ class AuthUser {
   final bool hasPriorityServer;
   final String? referralCode;
 
+  AuthUser withAvatarUrl(String value) => AuthUser(
+    id: id,
+    email: email,
+    fullName: fullName,
+    coinBalance: coinBalance,
+    isPremium: isPremium,
+    role: role,
+    authProvider: authProvider,
+    displayName: displayName,
+    phone: phone,
+    birthDate: birthDate,
+    birthTime: birthTime,
+    gender: gender,
+    memberSince: memberSince,
+    avatarUrl: value,
+    packageName: packageName,
+    packageCode: packageCode,
+    packageBadge: packageBadge,
+    premiumExpiryDate: premiumExpiryDate,
+    hasPassword: hasPassword,
+    unlimitedCoins: unlimitedCoins,
+    dailyAiQuestionsLeft: dailyAiQuestionsLeft,
+    dailyQuestionsUsed: dailyQuestionsUsed,
+    aiDailyLimit: aiDailyLimit,
+    maxAiQuestions: maxAiQuestions,
+    hasUnlimitedAi: hasUnlimitedAi,
+    hasAiChatHistory: hasAiChatHistory,
+    savedChartsCount: savedChartsCount,
+    maxSavedCharts: maxSavedCharts,
+    hasUnlimitedSavedCharts: hasUnlimitedSavedCharts,
+    hasDeepInterpretation: hasDeepInterpretation,
+    hasPdfExport: hasPdfExport,
+    hasPriorityServer: hasPriorityServer,
+    referralCode: referralCode,
+  );
+
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
     id: json['id']?.toString() ?? '',
     email: json['email']?.toString() ?? '',

@@ -124,6 +124,9 @@ void main() {
 
     expect(charts, hasLength(1));
     expect(charts.single.id, 'chart-id');
+    expect(charts.single.chartData, isNotEmpty);
+    expect(charts.single.chartData, contains('menh'));
+    expect(charts.single.chartData, contains('hourBranch'));
     expect(charts.single.hourBranch, 'Giờ Thìn');
     expect(charts.single.element, 'HỎA');
   });

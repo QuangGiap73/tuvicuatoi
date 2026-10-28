@@ -77,6 +77,17 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     state = AsyncData(AuthSession(token: session.token, user: user));
   }
 
+  void applyAvatarUrl(String avatarUrl) {
+    final session = state.asData?.value;
+    if (session == null || avatarUrl.trim().isEmpty) return;
+    state = AsyncData(
+      AuthSession(
+        token: session.token,
+        user: session.user.withAvatarUrl(avatarUrl.trim()),
+      ),
+    );
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     try {

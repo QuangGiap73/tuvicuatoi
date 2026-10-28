@@ -4,10 +4,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/widgets/mystic_notification_dialog.dart';
+import '../../ai_chat/presentation/widgets/chart_picker_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import '../domain/generated_overview_section_mapper.dart';
 import '../domain/interpretation_models.dart';
+import '../domain/interpretation_section_content_resolver.dart';
+import '../domain/interpretation_topic_mapper.dart';
+import '../domain/section_content.dart';
 import 'controllers/interpretation_controller.dart';
 import 'state/interpretation_state.dart';
+import 'widgets/bundle_unlock_dialog.dart';
+import 'widgets/interpretation_section_card.dart';
+import 'widgets/interpretation_section_preview.dart';
 import 'widgets/interpretation_tab_bar.dart';
 import 'widgets/interpretation_unlock_button.dart';
 
@@ -25,7 +34,7 @@ class InterpretationPage extends ConsumerWidget {
     );
     final chart = state.context;
     final lockedSections = state.sections
-        .where((section) => !controller.isUnlocked(section))
+        .where(controller.canPurchase)
         .toList(growable: false);
     final totalUnlockCost = lockedSections.fold<int>(
       0,
@@ -59,7 +68,8 @@ class InterpretationPage extends ConsumerWidget {
                           chart: chart,
                           balance: balance,
                           onBack: context.pop,
-                          onChangeChart: () => context.go(AppRoute.myCharts),
+                          onChangeChart: () =>
+                              _changeChart(context, ref, chart.chartId),
                         ),
                       ),
                       SliverPadding(
@@ -76,9 +86,18 @@ class InterpretationPage extends ConsumerWidget {
                               totalCost: totalUnlockCost,
                               isLoading:
                                   state.isLoadingSections ||
-                                  state.isLoadingUnlocks,
-                              onPressed: () =>
-                                  _showUnlockOverview(context, lockedSections),
+                                  state.isLoadingUnlocks ||
+                                  state.unlockStatusBySection.values.any(
+                                    (status) =>
+                                        status == UnlockStatus.submitting,
+                                  ),
+                              onPressed: () => _confirmBundleUnlock(
+                                context,
+                                ref,
+                                lockedSections,
+                                totalUnlockCost,
+                                balance,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             InterpretationTabBar(
@@ -90,7 +109,8 @@ class InterpretationPage extends ConsumerWidget {
                               const _LoadingCard(
                                 message: 'Đang tải dữ liệu lá số...',
                               )
-                            else if (state.context!.chartData.isEmpty)
+                            else if (state.context!.chartData.isEmpty &&
+                                !state.context!.isSaved)
                               _ErrorCard(
                                 message:
                                     state.errorMessage ??
@@ -125,6 +145,18 @@ class InterpretationPage extends ConsumerWidget {
                                   isUnlocked: controller.isUnlocked,
                                   onUnlock: (section) =>
                                       _confirmUnlock(context, ref, section),
+                                  onUnlockGroup: (sections) =>
+                                      _confirmBundleUnlock(
+                                        context,
+                                        ref,
+                                        sections,
+                                        sections.fold<int>(
+                                          0,
+                                          (total, section) =>
+                                              total + section.coinCost,
+                                        ),
+                                        balance,
+                                      ),
                                   onSelectPalace: controller.selectPalace,
                                 ),
                             ],
@@ -139,63 +171,71 @@ class InterpretationPage extends ConsumerWidget {
     );
   }
 
-  void _showUnlockOverview(
+  Future<void> _confirmBundleUnlock(
     BuildContext context,
+    WidgetRef ref,
     List<ReadingSection> sections,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFFF6E5BD),
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Các mục luận giải chưa mở',
-                style: TextStyle(
-                  color: Color(0xFF553315),
-                  fontFamily: 'serif',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 10),
-              if (sections.isEmpty)
-                const Text('Bạn đã mở toàn bộ nội dung hiện có.')
-              else
-                ...sections
-                    .take(6)
-                    .map(
-                      (section) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.lock_outline_rounded,
-                              size: 16,
-                              color: Color(0xFF8B5A18),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(section.title)),
-                            Text('${section.coinCost} Xu'),
-                          ],
-                        ),
-                      ),
-                    ),
-              if (sections.length > 6)
-                Text('Và ${sections.length - 6} mục khác...'),
-              const SizedBox(height: 12),
-              const Text(
-                'Mỗi mục được xác nhận và mở khóa riêng theo giá backend để tránh trừ Xu ngoài ý muốn.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF765C39)),
-              ),
-            ],
-          ),
+    int estimatedCost,
+    int balance,
+  ) async {
+    if (sections.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn đã mở toàn bộ nội dung hiện có.')),
+      );
+      return;
+    }
+    final current = ref.read(interpretationControllerProvider);
+    if (current.context?.isSaved != true) {
+      await _save(context, ref);
+      return;
+    }
+    final controller = ref.read(interpretationControllerProvider.notifier);
+    controller.beginBundleUnlockConfirmation(sections);
+    final request = await showBundleUnlockDialog(
+      context,
+      sectionCount: sections.length,
+      estimatedCost: estimatedCost,
+      balance: balance,
+    );
+    if (request == null || !context.mounted) {
+      controller.cancelBundleUnlockConfirmation(sections);
+      return;
+    }
+    final result = await controller.unlockBundle(
+      sections,
+      voucherCode: request.voucherCode,
+    );
+    if (!context.mounted) return;
+    final after = ref.read(interpretationControllerProvider);
+    final error = after.unlockError;
+    final syncing = sections.any(
+      (section) =>
+          ref
+              .read(interpretationControllerProvider.notifier)
+              .statusFor(section) ==
+          UnlockStatus.syncing,
+    );
+    final actualCost = result?.cost ?? estimatedCost;
+    final savedCost = result?.saveCost ?? 0;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          syncing
+              ? 'Đã thanh toán, đang đồng bộ quyền đọc.'
+              : result == null
+              ? error ?? 'Không thể mở trọn gói luận giải.'
+              : result.wasAlreadyUnlocked
+              ? 'Các mục này đã được mở trước đó.'
+              : 'Đã mở ${sections.length} mục với $actualCost Xu'
+                    '${savedCost > 0 ? ' (tiết kiệm $savedCost Xu)' : ''}'
+                    '${result.balance != null ? '. Số dư: ${result.balance} Xu' : ''}.',
         ),
+        action: result == null && balance < estimatedCost
+            ? SnackBarAction(
+                label: 'NẠP XU',
+                onPressed: () => context.go(AppRoute.wallet),
+              )
+            : null,
       ),
     );
   }
@@ -205,7 +245,7 @@ class InterpretationPage extends ConsumerWidget {
         .read(interpretationControllerProvider.notifier)
         .saveCurrentChart();
     if (!context.mounted) return;
-    final message = ref.read(interpretationControllerProvider).errorMessage;
+    final message = ref.read(interpretationControllerProvider).chartError;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -215,6 +255,21 @@ class InterpretationPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _changeChart(
+    BuildContext context,
+    WidgetRef ref,
+    String? currentChartId,
+  ) async {
+    final selected = await showChartPickerDialog(
+      context,
+      selectedChartId: currentChartId,
+    );
+    if (selected == null || selected.id == currentChartId || !context.mounted) {
+      return;
+    }
+    ref.read(interpretationControllerProvider.notifier).openSaved(selected);
   }
 
   Future<void> _confirmUnlock(
@@ -247,41 +302,87 @@ class InterpretationPage extends ConsumerWidget {
       if (shouldSave == true && context.mounted) await _save(context, ref);
       return;
     }
+    final unlockController = ref.read(
+      interpretationControllerProvider.notifier,
+    );
+    final currentStatus = unlockController.statusFor(section);
+    if (!unlockController.canPurchase(section)) {
+      if (currentStatus == UnlockStatus.syncing && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã thanh toán, đang đồng bộ quyền đọc.'),
+          ),
+        );
+      }
+      return;
+    }
     final balance =
         ref.read(authControllerProvider).asData?.value?.user.coinBalance ?? 0;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFF6E5BD),
-        title: Text('Mở khóa ${section.title}?'),
-        content: Text(
-          'Chi phí do máy chủ xác nhận: ${section.coinCost} Xu.\nSố dư hiện tại: $balance Xu.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
+    final modeName = state.mode == InterpretationMode.everyday
+        ? 'Bản Tinh Gọn'
+        : 'Bản Chuyên Sâu';
+    unlockController.beginUnlockConfirmation(section);
+    final confirmed = await MysticNotificationDialog.show<bool>(
+      context,
+      dialog: MysticNotificationDialog(
+        header: 'Mở khóa luận giải',
+        title: section.title,
+        description: section.subtitle.trim().isNotEmpty
+            ? section.subtitle
+            : section.summary,
+        leading: Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0x33D09A2C),
+            border: Border.all(color: const Color(0xFFBF8623)),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xác nhận'),
+          child: const Icon(
+            Icons.menu_book_rounded,
+            color: Color(0xFF9A6416),
+            size: 34,
+          ),
+        ),
+        priceLabel: 'Chi phí mở khóa',
+        priceText: '${section.coinCost} Xu',
+        priceNote: 'Số dư hiện tại: $balance Xu',
+        items: [
+          MysticNotificationItem('Nội dung này thuộc $modeName'),
+          const MysticNotificationItem(
+            'Sau khi mở khóa, bạn có thể đọc lại bất kỳ lúc nào trên lá số này.',
+            icon: Icons.done_rounded,
+            color: Color(0xFF625038),
           ),
         ],
+        cancelLabel: 'Hủy',
+        confirmLabel: 'Xác nhận mở khóa',
+        onConfirm: () => Navigator.pop(context, true),
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    final controller = unlockController;
+    if (confirmed != true || !context.mounted) {
+      controller.cancelUnlockConfirmation(section);
+      return;
+    }
     final result = await ref
         .read(interpretationControllerProvider.notifier)
         .unlock(section);
     if (!context.mounted) return;
-    final error = ref.read(interpretationControllerProvider).errorMessage;
+    final after = ref.read(interpretationControllerProvider);
+    final error = after.unlockError;
+    final status = controller.statusFor(section);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          result != null
+          status == UnlockStatus.syncing
+              ? 'Đã thanh toán, đang đồng bộ quyền đọc.'
+              : result != null
               ? result.wasAlreadyUnlocked
                     ? 'Mục này đã được mở khóa trước đó.'
-                    : 'Đã mở khóa ${section.title}.'
+                    : 'Đã mở khóa ${section.title} với '
+                          '${result.cost ?? section.coinCost} Xu'
+                          '${result.balance != null ? '. Số dư: ${result.balance} Xu' : ''}.'
               : error ?? 'Không thể mở khóa nội dung.',
         ),
         action: result == null && balance < section.coinCost
@@ -300,48 +401,111 @@ class _TabContent extends StatelessWidget {
     required this.state,
     required this.isUnlocked,
     required this.onUnlock,
+    required this.onUnlockGroup,
     required this.onSelectPalace,
   });
 
   final InterpretationState state;
   final bool Function(ReadingSection) isUnlocked;
   final ValueChanged<ReadingSection> onUnlock;
+  final ValueChanged<List<ReadingSection>> onUnlockGroup;
   final ValueChanged<String?> onSelectPalace;
+  static const _contentResolver = InterpretationSectionContentResolver();
 
   @override
   Widget build(BuildContext context) {
     final data = state.interpretation;
     final sections = _sectionsForTab(state.sections, state.selectedTab);
+    final lockedSections = sections
+        .where((section) {
+          final status = _statusForSection(section);
+          return !_canRead(section) &&
+              status != UnlockStatus.confirming &&
+              status != UnlockStatus.submitting &&
+              status != UnlockStatus.syncing;
+        })
+        .toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (data != null) ..._contentCards(data, state.selectedTab),
         if (data == null || data.isEmpty)
           const _EmptyCard(
             message: 'Backend chưa trả về nội dung cho chế độ đọc này.',
           ),
         if (sections.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const Text(
-            'CÁC MỤC LUẬN GIẢI',
-            style: TextStyle(
-              color: Color(0xFFFFD978),
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .7,
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'CÁC MỤC LUẬN GIẢI',
+                  style: TextStyle(
+                    color: Color(0xFFFFD978),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: .7,
+                  ),
+                ),
+              ),
+              if (lockedSections.isNotEmpty)
+                TextButton.icon(
+                  onPressed:
+                      state.unlockStatusBySection.values.any(
+                        (status) =>
+                            status == UnlockStatus.confirming ||
+                            status == UnlockStatus.submitting,
+                      )
+                      ? null
+                      : () => onUnlockGroup(lockedSections),
+                  icon: const Icon(Icons.lock_open_rounded, size: 14),
+                  label: Text(
+                    'MỞ FULL (${lockedSections.fold<int>(0, (total, section) => total + section.coinCost)} XU)',
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFD978),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           for (final section in sections)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _SectionCard(
+              child: InterpretationSectionCard(
                 section: section,
-                unlocked: isUnlocked(section),
-                loading: state.unlockingSectionId == section.id,
+                isUnlocked: _canRead(section),
+                unlockStatus: _statusForSection(section),
+                isSharedContent:
+                    _resolveContent(section).source !=
+                        ContentSource.generatedInterpretation &&
+                    InterpretationTopicMapper.topicFor(section) != null,
+                onOpen: () => showInterpretationSectionPreview(
+                  context,
+                  section: section,
+                  content: _resolveContent(section),
+                  isUnlocked: _canRead(section),
+                  topic:
+                      _canRead(section) &&
+                          _resolveContent(section).source !=
+                              ContentSource.generatedInterpretation
+                      ? InterpretationTopicMapper.topicFor(section)
+                      : null,
+                  isSharedContent:
+                      _resolveContent(section).source !=
+                          ContentSource.generatedInterpretation &&
+                      InterpretationTopicMapper.topicFor(section) != null,
+                  onUnlock: () => onUnlock(section),
+                ),
                 onUnlock: () => onUnlock(section),
               ),
             ),
+          if (state.selectedTab == InterpretationTab.overview)
+            ..._generatedOverviewCards(context),
         ] else if (!state.isLoadingSections)
           const Padding(
             padding: EdgeInsets.only(top: 12),
@@ -354,126 +518,255 @@ class _TabContent extends StatelessWidget {
     );
   }
 
-  List<Widget> _contentCards(
-    InterpretationData data,
-    InterpretationTab tab,
-  ) => switch (tab) {
-    InterpretationTab.overview => [
-      if (data.aiShortSummary != null)
-        _PaperCard(title: 'Tổng quan', content: data.aiShortSummary!),
-      if (data.personalityCore != null &&
-          _canRead(const ['ban_menh', 'tong_quan', 'cung_menh', 'overview']))
-        _PaperCard(
-          title: 'Bản mệnh và tính cách',
-          content: data.personalityCore!,
-        ),
-    ],
-    InterpretationTab.palaces =>
-      data.palaces
-          .where(
-            (item) => _canRead([
-              'cung_${_slug(item.palace.replaceFirst(RegExp(r'^cung\s+', caseSensitive: false), ''))}',
-              _slug(item.palace),
-            ]),
-          )
-          .map(
-            (item) => _PaperCard(
-              title: item.palace,
-              subtitle: item.star,
-              content: item.summary,
-              onTap: () => onSelectPalace(item.palace),
-            ),
-          )
-          .toList(growable: false),
-    InterpretationTab.fortunes => [
-      if (data.decennialFortune != null &&
-          _canRead(const ['dai_van', 'decennial']))
-        _PaperCard(title: 'Đại vận', content: data.decennialFortune!),
-      if (data.yearlyFortune != null && _canRead(const ['tieu_van', 'yearly']))
-        _PaperCard(title: 'Tiểu vận', content: data.yearlyFortune!),
-    ],
-    InterpretationTab.guidance => [
-      if (data.careerFame != null &&
-          _canRead(const ['cong_danh', 'quan_loc', 'career']))
-        _PaperCard(title: 'Công danh và sự nghiệp', content: data.careerFame!),
-      if (data.wealthAccumulation != null &&
-          _canRead(const ['tai_loc', 'tai_bach', 'wealth']))
-        _PaperCard(title: 'Tài lộc', content: data.wealthAccumulation!),
-      if (data.marriageFamily != null &&
-          _canRead(const ['hon_nhan', 'phu_the', 'marriage']))
-        _PaperCard(
-          title: 'Hôn nhân và tình cảm',
-          content: data.marriageFamily!,
-        ),
-      if (data.healthVitality != null &&
-          _canRead(const ['suc_khoe', 'tat_ach', 'health']))
-        _PaperCard(title: 'Sức khỏe', content: data.healthVitality!),
-      if (data.fengshuiAdvice != null &&
-          _canRead(const ['phong_thuy', 'fengshui']))
-        _PaperCard(title: 'Phong thủy ứng dụng', content: data.fengshuiAdvice!),
-    ],
-  };
-
-  bool _canRead(List<String> keywords) {
-    final matches = state.sections.where((section) {
-      final value = _slug(
-        '${section.groupSlug} ${section.sectionSlug} ${section.title}',
-      );
-      return keywords.any((keyword) => value.contains(_slug(keyword)));
-    });
-    return matches.any(isUnlocked);
+  UnlockStatus _statusForSection(ReadingSection section) {
+    if (_serverUnlockFor(section) == false && isUnlocked(section)) {
+      return UnlockStatus.syncing;
+    }
+    if (_canRead(section)) return UnlockStatus.unlocked;
+    final chartId = state.context?.chartId;
+    if (chartId == null) return UnlockStatus.idle;
+    final key = ReadingSectionKey(
+      chartId: chartId,
+      mode: state.mode,
+      groupSlug: section.groupSlug,
+      sectionSlug: section.sectionSlug,
+    );
+    return state.unlockStatusBySection[key.value] ?? UnlockStatus.idle;
   }
 
-  static String _slug(String value) {
-    var result = value.trim().toLowerCase();
-    const replacements = <String, String>{
-      'áàảãạăắằẳẵặâấầẩẫậ': 'a',
-      'éèẻẽẹêếềểễệ': 'e',
-      'íìỉĩị': 'i',
-      'óòỏõọôốồổỗộơớờởỡợ': 'o',
-      'úùủũụưứừửữự': 'u',
-      'ýỳỷỹỵ': 'y',
-      'đ': 'd',
-    };
-    for (final entry in replacements.entries) {
-      for (final character in entry.key.split('')) {
-        result = result.replaceAll(character, entry.value);
+  SectionContent _resolveContent(ReadingSection section) =>
+      _contentResolver.resolve(
+        section: section,
+        interpretation: state.interpretation ?? const InterpretationData(),
+        chartData: state.context?.chartData ?? const {},
+      );
+
+  bool _canRead(ReadingSection section) {
+    final serverValue = _serverUnlockFor(section);
+    return serverValue ?? isUnlocked(section);
+  }
+
+  bool? _serverUnlockFor(ReadingSection section) {
+    final interpretation = state.interpretation;
+    if (interpretation == null) return null;
+    for (final generated in interpretation.overviewSections) {
+      final mapped = GeneratedOverviewSectionMapper.toSection(generated);
+      if (mapped?.sectionSlug == section.sectionSlug) {
+        return generated.isUnlocked;
       }
     }
-    return result
-        .replaceAll(RegExp(r'[^a-z0-9_]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_');
+    const palaceBySlug = <String, String>{
+      'cung_menh': 'Mệnh',
+      'cung_phu_mau': 'Phụ Mẫu',
+      'cung_phu_the': 'Phu Thê',
+      'cung_quan_loc': 'Quan Lộc',
+      'cung_tai_bach': 'Tài Bạch',
+      'cung_tat_ach': 'Tật Ách',
+      'cung_dien_trach': 'Điền Trạch',
+    };
+    final palaceName = palaceBySlug[section.sectionSlug];
+    if (palaceName != null) {
+      for (final palace in interpretation.palaceReadingSections) {
+        final title = palace.title.toLowerCase();
+        if (title == palaceName.toLowerCase() ||
+            title == 'cung ${palaceName.toLowerCase()}') {
+          return palace.isUnlocked;
+        }
+      }
+    }
+    final timingSection = switch (section.sectionSlug) {
+      'dai_van_10_nam' => interpretation.timing.daiVan,
+      'tieu_han_nam_nay' => interpretation.timing.tieuVan,
+      _ => null,
+    };
+    if (timingSection != null) return timingSection.isUnlocked;
+    if (section.sectionSlug == 'phong_thuy_ung_dung' &&
+        interpretation.guidanceSections.isNotEmpty) {
+      return interpretation.guidanceSections.every((item) => item.isUnlocked);
+    }
+    return null;
+  }
+
+  List<Widget> _generatedOverviewCards(BuildContext context) {
+    final interpretation = state.interpretation;
+    if (interpretation == null) return const [];
+    final configuredSlugs = state.sections
+        .where((section) => section.groupSlug == 'tong_quan_ban_menh')
+        .map((section) => section.sectionSlug)
+        .toSet();
+    final cards = <Widget>[];
+    for (final generated in interpretation.overviewSections) {
+      final section = GeneratedOverviewSectionMapper.toSection(generated);
+      if (section == null || configuredSlugs.contains(section.sectionSlug)) {
+        continue;
+      }
+      final unlocked = generated.isUnlocked;
+      final content = SectionContent(
+        preview: section.subtitle,
+        fullContent: generated.fullText.trim().isEmpty
+            ? null
+            : generated.fullText.trim(),
+        source: ContentSource.generatedInterpretation,
+        isFallback: false,
+      );
+      cards.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: InterpretationSectionCard(
+            section: section,
+            isUnlocked: unlocked,
+            unlockStatus: unlocked ? UnlockStatus.unlocked : UnlockStatus.idle,
+            canUnlock: false,
+            onOpen: () => showInterpretationSectionPreview(
+              context,
+              section: section,
+              content: content,
+              isUnlocked: unlocked,
+              canUnlock: false,
+              onUnlock: () {},
+            ),
+            onUnlock: () {},
+          ),
+        ),
+      );
+    }
+    return cards;
+  }
+
+  // Kept temporarily while the backend catalog is being aligned with Web.
+  // ignore: unused_element
+  List<Widget> _contentCards(BuildContext context, InterpretationTab tab) =>
+      switch (tab) {
+        InterpretationTab.overview => [
+          ..._paperFor(
+            context,
+            groupSlug: 'tong_quan_ban_menh',
+            sectionSlug: 'tong_quan_nhan_sinh',
+            title: 'Tổng quan nhân sinh',
+          ),
+          ..._paperFor(
+            context,
+            groupSlug: 'tong_quan_ban_menh',
+            sectionSlug: 'ban_menh_va_than',
+            title: 'Bản mệnh và tính cách',
+          ),
+          ..._paperFor(
+            context,
+            groupSlug: 'tong_quan_ban_menh',
+            sectionSlug: 'am_duong_ngu_hanh',
+            title: 'Âm dương ngũ hành',
+          ),
+        ],
+        InterpretationTab.palaces => [
+          for (final entry in const <String, String>{
+            'cung_menh': 'Cung Mệnh',
+            'cung_phu_mau': 'Cung Phụ Mẫu',
+            'cung_phu_the': 'Cung Phu Thê',
+            'cung_quan_loc': 'Cung Quan Lộc',
+            'cung_tai_bach': 'Cung Tài Bạch',
+            'cung_tat_ach': 'Cung Tật Ách',
+            'cung_dien_trach': 'Cung Điền Trạch',
+          }.entries)
+            ..._paperFor(
+              context,
+              groupSlug: 'chi_tiet_12_cung',
+              sectionSlug: entry.key,
+              title: entry.value,
+              palaceName: entry.value,
+            ),
+        ],
+        InterpretationTab.fortunes => [
+          ..._paperFor(
+            context,
+            groupSlug: 'dai_van_tieu_han',
+            sectionSlug: 'dai_van_10_nam',
+            title: 'Đại vận',
+          ),
+          ..._paperFor(
+            context,
+            groupSlug: 'dai_van_tieu_han',
+            sectionSlug: 'tieu_han_nam_nay',
+            title: 'Tiểu hạn năm nay',
+          ),
+          ..._paperFor(
+            context,
+            groupSlug: 'dai_van_tieu_han',
+            sectionSlug: 'luu_nien_5_nam',
+            title: 'Lưu niên 5 năm',
+          ),
+        ],
+        InterpretationTab.guidance => [
+          ..._paperFor(
+            context,
+            groupSlug: 'goi_y_ung_dung',
+            sectionSlug: 'phong_thuy_ung_dung',
+            title: 'Phong thủy ứng dụng',
+          ),
+          ..._paperFor(
+            context,
+            groupSlug: 'goi_y_ung_dung',
+            sectionSlug: 'loi_khuyen_nghe_nghiep',
+            title: 'Lời khuyên nghề nghiệp',
+          ),
+          ..._paperFor(
+            context,
+            groupSlug: 'goi_y_ung_dung',
+            sectionSlug: 'tuong_hop_nhan_duyen',
+            title: 'Tương hợp nhân duyên',
+          ),
+        ],
+      };
+
+  List<Widget> _paperFor(
+    BuildContext context, {
+    required String groupSlug,
+    required String sectionSlug,
+    required String title,
+    String? palaceName,
+  }) {
+    final section = state.sections.cast<ReadingSection?>().firstWhere(
+      (item) =>
+          item?.groupSlug == groupSlug && item?.sectionSlug == sectionSlug,
+      orElse: () => null,
+    );
+    if (section == null) return const [];
+    final canReadFull = section.isPublicOverview || isUnlocked(section);
+    if (!canReadFull) return const [];
+    final content = _resolveContent(section);
+    if (content.displayContent.isEmpty) return const [];
+    return [
+      _PaperCard(
+        title: title,
+        content: content.displayContent,
+        onTap: () {
+          if (palaceName != null) onSelectPalace(palaceName);
+          showInterpretationSectionPreview(
+            context,
+            section: section,
+            content: content,
+            isUnlocked: true,
+            topic: InterpretationTopicMapper.topicFor(section),
+            onUnlock: () => onUnlock(section),
+          );
+        },
+      ),
+    ];
   }
 
   static List<ReadingSection> _sectionsForTab(
     List<ReadingSection> sections,
     InterpretationTab tab,
-  ) {
-    bool matches(ReadingSection section) {
-      final value = '${section.groupSlug} ${section.sectionSlug}'.toLowerCase();
-      return switch (tab) {
-        InterpretationTab.overview =>
-          value.contains('ban_menh') ||
-              value.contains('tong_quan') ||
-              value.contains('overview'),
-        InterpretationTab.palaces =>
-          value.contains('cung') || value.contains('palace'),
-        InterpretationTab.fortunes =>
-          value.contains('van_han') ||
-              value.contains('dai_van') ||
-              value.contains('tieu_van') ||
-              value.contains('fortune'),
-        InterpretationTab.guidance =>
-          value.contains('ung_dung') ||
-              value.contains('chuyen_de') ||
-              value.contains('phong_thuy') ||
-              value.contains('career') ||
-              value.contains('wealth') ||
-              value.contains('health'),
-      };
-    }
+  ) => sections
+      .where((section) => _tabForSection(section) == tab)
+      .toList(growable: false);
 
-    return sections.where(matches).toList(growable: false);
+  static InterpretationTab _tabForSection(ReadingSection section) {
+    return switch (section.groupSlug) {
+      'chi_tiet_12_cung' => InterpretationTab.palaces,
+      'dai_van_tieu_han' => InterpretationTab.fortunes,
+      'goi_y_ung_dung' => InterpretationTab.guidance,
+      _ => InterpretationTab.overview,
+    };
   }
 }
 
@@ -704,15 +997,9 @@ class _ModeCard extends StatelessWidget {
 }
 
 class _PaperCard extends StatelessWidget {
-  const _PaperCard({
-    required this.title,
-    required this.content,
-    this.subtitle,
-    this.onTap,
-  });
+  const _PaperCard({required this.title, required this.content, this.onTap});
   final String title;
   final String content;
-  final String? subtitle;
   final VoidCallback? onTap;
 
   @override
@@ -742,17 +1029,6 @@ class _PaperCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              if (subtitle != null && subtitle!.isNotEmpty) ...[
-                const SizedBox(height: 3),
-                Text(
-                  subtitle!,
-                  style: const TextStyle(
-                    color: Color(0xFF9A632A),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
               const SizedBox(height: 7),
               Text(
                 content,
@@ -766,82 +1042,6 @@ class _PaperCard extends StatelessWidget {
           ),
         ),
       ),
-    ),
-  );
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.section,
-    required this.unlocked,
-    required this.loading,
-    required this.onUnlock,
-  });
-  final ReadingSection section;
-  final bool unlocked;
-  final bool loading;
-  final VoidCallback onUnlock;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(13),
-    decoration: BoxDecoration(
-      color: const Color(0xE20A1B27),
-      borderRadius: BorderRadius.circular(9),
-      border: Border.all(color: const Color(0xFF9C7434)),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          unlocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
-          color: unlocked ? const Color(0xFF69D7A8) : const Color(0xFFFFC963),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                section.title,
-                style: const TextStyle(
-                  color: Color(0xFFFFE5AD),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (section.subtitle.isNotEmpty)
-                Text(
-                  section.subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFBDB091),
-                    fontSize: 10.5,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        if (unlocked)
-          const Text(
-            'ĐÃ MỞ',
-            style: TextStyle(
-              color: Color(0xFF69D7A8),
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-            ),
-          )
-        else
-          TextButton(
-            onPressed: loading ? null : onUnlock,
-            child: loading
-                ? const SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text('${section.coinCost} XU'),
-          ),
-      ],
     ),
   );
 }

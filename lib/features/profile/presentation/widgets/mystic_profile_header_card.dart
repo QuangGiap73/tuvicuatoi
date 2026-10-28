@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/assets/mystic_assets.dart';
@@ -12,6 +14,9 @@ class MysticProfileHeaderCard extends StatelessWidget {
     required this.coinBalance,
     required this.savedChartsCount,
     required this.aiQuestionsLeft,
+    this.avatarPreviewPath,
+    this.onAvatarPressed,
+    this.isUpdatingAvatar = false,
     super.key,
   });
 
@@ -22,6 +27,9 @@ class MysticProfileHeaderCard extends StatelessWidget {
   final int coinBalance;
   final int savedChartsCount;
   final int aiQuestionsLeft;
+  final String? avatarPreviewPath;
+  final VoidCallback? onAvatarPressed;
+  final bool isUpdatingAvatar;
 
   static const _gold = Color(0xFFD6A94D);
   static const _ivory = Color(0xFFF6F0DF);
@@ -152,36 +160,88 @@ class MysticProfileHeaderCard extends StatelessWidget {
       ),
     );
 
-    return SizedBox.square(
-      dimension: 58,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(5),
-            child: ClipOval(
-              child: canLoadNetwork
-                  ? Image.network(
-                      url,
-                      fit: BoxFit.cover,
-                      cacheWidth: 144,
-                      cacheHeight: 144,
-                      filterQuality: FilterQuality.low,
-                      errorBuilder: (_, _, _) => fallback,
-                    )
-                  : fallback,
-            ),
+    final preview = avatarPreviewPath?.trim();
+    return Semantics(
+      button: onAvatarPressed != null,
+      label: 'Thay đổi ảnh đại diện',
+      child: GestureDetector(
+        onTap: isUpdatingAvatar ? null : onAvatarPressed,
+        child: SizedBox.square(
+          dimension: 62,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(6),
+                child: ClipOval(
+                  child: preview != null && preview.isNotEmpty
+                      ? Image.file(
+                          File(preview),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => fallback,
+                        )
+                      : canLoadNetwork
+                      ? Image.network(
+                          url,
+                          fit: BoxFit.cover,
+                          cacheWidth: 144,
+                          cacheHeight: 144,
+                          filterQuality: FilterQuality.low,
+                          errorBuilder: (_, _, _) => fallback,
+                        )
+                      : fallback,
+                ),
+              ),
+              IgnorePointer(
+                child: Image.asset(
+                  MysticAssets.profileAvatarFrame,
+                  fit: BoxFit.contain,
+                  cacheWidth: 144,
+                  cacheHeight: 144,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+              if (isUpdatingAvatar)
+                const Padding(
+                  padding: EdgeInsets.all(7),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0x99020A10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFFFD36C),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else if (onAvatarPressed != null)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 21,
+                    height: 21,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9A6815),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFFFD97C)),
+                    ),
+                    child: const Icon(
+                      Icons.photo_camera_rounded,
+                      color: Color(0xFFFFF0C6),
+                      size: 12,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          IgnorePointer(
-            child: Image.asset(
-              MysticAssets.profileAvatarFrame,
-              fit: BoxFit.contain,
-              cacheWidth: 144,
-              cacheHeight: 144,
-              filterQuality: FilterQuality.medium,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

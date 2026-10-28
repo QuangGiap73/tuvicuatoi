@@ -90,7 +90,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 autofillHints: const [AutofillHints.password],
                 validator: _required,
                 trailingLabel: TextButton(
-                  onPressed: isLoading ? null : _showForgotPasswordNotice,
+                  onPressed: isLoading
+                      ? null
+                      : () => context.push(
+                          '${AppRoute.forgotPassword}?email='
+                          '${Uri.encodeQueryComponent(_emailController.text.trim())}',
+                        ),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
@@ -151,13 +156,4 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _signInWithGoogle() =>
       ref.read(authControllerProvider.notifier).loginWithGoogle();
-
-  void _showForgotPasswordNotice() =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Luồng quên mật khẩu và OTP sẽ được triển khai ở bước tiếp theo.',
-          ),
-        ),
-      );
 }

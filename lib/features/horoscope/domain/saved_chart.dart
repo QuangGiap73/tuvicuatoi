@@ -9,6 +9,7 @@ class SavedChart {
     this.hourBranch,
     this.menh,
     this.cuc,
+    this.chartData = const {},
   });
 
   final String id;
@@ -20,6 +21,7 @@ class SavedChart {
   final String? hourBranch;
   final String? menh;
   final String? cuc;
+  final Map<String, dynamic> chartData;
 
   String get displayName {
     final value = name
@@ -81,6 +83,7 @@ class SavedChart {
         json['menh'] ?? json['element'] ?? nested['menh'] ?? nested['element'],
       ),
       cuc: optional(json['cuc'] ?? nested['cuc']),
+      chartData: Map.unmodifiable(nested),
     );
   }
 

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_provider.dart';
 import '../domain/interpretation_models.dart';
+import '../domain/section_content.dart';
+import '../domain/topic_interpretation.dart';
 
 class InterpretationException implements Exception {
   const InterpretationException(this.message, {this.statusCode});
@@ -15,6 +17,45 @@ class InterpretationException implements Exception {
 class InterpretationRepository {
   const InterpretationRepository(this._dio);
   final Dio _dio;
+
+  Future<TopicInterpretation> getTopicInterpretation({
+    required String topic,
+    CancelToken? cancelToken,
+  }) async {
+    final normalizedTopic = topic.trim();
+    if (normalizedTopic.isEmpty) {
+      throw const InterpretationException('Chuyên đề không hợp lệ.');
+    }
+    try {
+      final response = await _dio.post<Object?>(
+        '/luan/chuyen-de',
+        data: {'topic': normalizedTopic},
+        cancelToken: cancelToken,
+      );
+      final body = response.data;
+      final raw = body is Map ? body['data'] : null;
+      if (body is! Map || body['success'] != true || raw is! List) {
+        throw const InterpretationException('Dữ liệu chuyên đề không hợp lệ.');
+      }
+      final topics = raw
+          .whereType<Map>()
+          .map(
+            (item) =>
+                TopicInterpretation.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .where((item) => item.content.isNotEmpty)
+          .toList(growable: false);
+      if (topics.isEmpty) {
+        throw InterpretationException(
+          'Backend chưa hỗ trợ chuyên đề “$normalizedTopic”.',
+        );
+      }
+      return topics.first;
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) rethrow;
+      throw _exception(error);
+    }
+  }
 
   Future<List<ReadingSection>> getSections({CancelToken? cancelToken}) async {
     try {
@@ -85,7 +126,9 @@ class InterpretationRepository {
           'Dữ liệu luận giải đã lưu không hợp lệ.',
         );
       }
-      return InterpretationData.fromJson(Map<String, dynamic>.from(data));
+      return InterpretationData.fromJson(
+        Map<String, dynamic>.from(data),
+      ).withSource(ContentSource.savedInterpretation);
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
@@ -95,12 +138,21 @@ class InterpretationRepository {
   Future<InterpretationData> generate({
     required Map<String, dynamic> chartData,
     required InterpretationMode mode,
+    DateTime? readingDate,
     CancelToken? cancelToken,
   }) async {
     try {
+      final targetDate = readingDate ?? DateTime.now();
       final response = await _dio.post<Object?>(
         '/tuvi/read',
-        data: {'type': 'full', 'mode': mode.apiValue, 'chart': chartData},
+        data: {
+          'type': 'full',
+          'mode': mode.apiValue,
+          'year': targetDate.year,
+          'month': targetDate.month,
+          'day': targetDate.day,
+          'chart': chartData,
+        },
         cancelToken: cancelToken,
       );
       final body = response.data;
@@ -108,7 +160,9 @@ class InterpretationRepository {
       if (body is! Map || body['success'] != true || data is! Map) {
         throw const InterpretationException('Dữ liệu luận giải không hợp lệ.');
       }
-      return InterpretationData.fromJson(Map<String, dynamic>.from(data));
+      return InterpretationData.fromJson(
+        Map<String, dynamic>.from(data),
+      ).withSource(ContentSource.generatedInterpretation);
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
@@ -137,7 +191,53 @@ class InterpretationRepository {
       );
       final body = response.data;
       if (body is! Map || body['success'] != true) {
-        throw InterpretationException(_message(body));
+        throw InterpretationException(
+          _message(body),
+          statusCode: response.statusCode ?? 400,
+        );
+      }
+      return ReadingUnlockResult.fromJson(Map<String, dynamic>.from(body));
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) rethrow;
+      throw _exception(error);
+    }
+  }
+
+  Future<ReadingUnlockResult> unlockBundle({
+    required String chartId,
+    required InterpretationMode mode,
+    required List<ReadingSection> sections,
+    String? voucherCode,
+    CancelToken? cancelToken,
+  }) async {
+    if (sections.isEmpty) {
+      throw const InterpretationException('Không có mục nào cần mở khóa.');
+    }
+    try {
+      final response = await _dio.post<Object?>(
+        '/charts/reading-unlocks/',
+        data: {
+          'chartId': chartId,
+          'interpretationMode': mode.apiValue,
+          'sections': sections
+              .map(
+                (section) => {
+                  'groupSlug': section.groupSlug,
+                  'sectionSlug': section.sectionSlug,
+                },
+              )
+              .toList(growable: false),
+          if (voucherCode != null && voucherCode.trim().isNotEmpty)
+            'voucherCode': voucherCode.trim(),
+        },
+        cancelToken: cancelToken,
+      );
+      final body = response.data;
+      if (body is! Map || body['success'] != true) {
+        throw InterpretationException(
+          _message(body),
+          statusCode: response.statusCode ?? 400,
+        );
       }
       return ReadingUnlockResult.fromJson(Map<String, dynamic>.from(body));
     } on DioException catch (error) {

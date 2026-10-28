@@ -41,6 +41,7 @@ class SavedChartDetail {
         hourBranch: _optional(parsed.hourBranch, fallback.hourBranch),
         menh: _optional(parsed.menh, fallback.menh),
         cuc: _optional(parsed.cuc, fallback.cuc),
+        chartData: Map.unmodifiable(raw),
       ),
       chartData: Map.unmodifiable(raw),
     );

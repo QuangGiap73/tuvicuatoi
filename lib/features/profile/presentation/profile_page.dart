@@ -8,7 +8,9 @@ import '../../../core/theme/mystic_spacing.dart';
 import '../../../core/widgets/golden_button.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import 'controllers/avatar_update_controller.dart';
 import 'providers/profile_providers.dart';
+import 'widgets/avatar_picker_sheet.dart';
 import 'widgets/mystic_profile_action_menu.dart';
 import 'widgets/mystic_profile_header_card.dart';
 import 'widgets/profile_mystic_app_bar.dart';
@@ -19,6 +21,7 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentProfileProvider);
+    final avatarState = ref.watch(avatarUpdateControllerProvider);
     final mediaQuery = MediaQuery.of(context);
     final backgroundCacheWidth =
         (mediaQuery.size.width * mediaQuery.devicePixelRatio).round();
@@ -39,11 +42,7 @@ class ProfilePage extends ConsumerWidget {
       ),
       appBar: ProfileMysticAppBar(
         onBackPressed: () => context.go(AppRoute.home),
-        onSettingsPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cài đặt tài khoản sẽ được hoàn thiện sau.'),
-          ),
-        ),
+        onSettingsPressed: () => context.push(AppRoute.accountSettings),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -61,6 +60,9 @@ class ProfilePage extends ConsumerWidget {
             coinBalance: user?.coinBalance ?? 0,
             savedChartsCount: user?.savedChartsCount ?? 0,
             aiQuestionsLeft: user?.dailyAiQuestionsLeft ?? 0,
+            avatarPreviewPath: avatarState.previewPath,
+            isUpdatingAvatar: avatarState.isBusy,
+            onAvatarPressed: () => _changeAvatar(context, ref),
           ),
           const SizedBox(height: MysticSpacing.md),
           MysticProfileActionMenu(
@@ -75,7 +77,7 @@ class ProfilePage extends ConsumerWidget {
             onTopUpPressed: () => context.go(AppRoute.wallet),
             onMembershipPressed: () =>
                 _showComingSoon(context, 'Gói thành viên'),
-            onSettingsPressed: () => _showComingSoon(context, 'Cài đặt'),
+            onSettingsPressed: () => context.push(AppRoute.accountSettings),
             onHelpPressed: () => _showComingSoon(context, 'Trợ giúp & Hỗ trợ'),
           ),
           const SizedBox(height: MysticSpacing.lg),
@@ -94,4 +96,23 @@ class ProfilePage extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$feature sẽ được hoàn thiện sau.')),
       );
+
+  Future<void> _changeAvatar(BuildContext context, WidgetRef ref) async {
+    final source = await showAvatarPickerSheet(context);
+    if (source == null || !context.mounted) return;
+    final success = await ref
+        .read(avatarUpdateControllerProvider.notifier)
+        .selectAndUpload(source);
+    if (!context.mounted) return;
+    final state = ref.read(avatarUpdateControllerProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Cập nhật ảnh đại diện thành công.'
+              : state.errorMessage ?? 'Không thể cập nhật ảnh đại diện.',
+        ),
+      ),
+    );
+  }
 }

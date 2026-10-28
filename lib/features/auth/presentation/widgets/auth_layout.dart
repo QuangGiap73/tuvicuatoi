@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/assets/mystic_assets.dart';
 import '../../../../core/theme/mystic_colors.dart';
@@ -382,6 +383,7 @@ class AuthTextField extends StatelessWidget {
     this.onChanged,
     this.validator,
     this.autofillHints,
+    this.inputFormatters,
     super.key,
   });
   final TextEditingController controller;
@@ -394,6 +396,7 @@ class AuthTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
   final Iterable<String>? autofillHints;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -428,6 +431,7 @@ class AuthTextField extends StatelessWidget {
         obscureText: obscureText,
         validator: validator,
         autofillHints: autofillHints,
+        inputFormatters: inputFormatters,
         style: const TextStyle(color: Color(0xFFE5E8EF), fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,

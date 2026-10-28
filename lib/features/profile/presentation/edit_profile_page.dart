@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/mystic_colors.dart';
 import '../../../core/widgets/mystic_app_bar.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
+import 'controllers/avatar_update_controller.dart';
 import 'providers/profile_providers.dart';
+import 'widgets/avatar_picker_sheet.dart';
 import 'widgets/mystic_profile_save_button.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -49,11 +53,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(profileSubmittingProvider);
     final errorMessage = ref.watch(profileEditErrorProvider);
+    final user = ref.watch(currentProfileProvider);
+    final avatarState = ref.watch(avatarUpdateControllerProvider);
+    final isBusy = isLoading || avatarState.isBusy;
     return MysticScaffold(
       appBar: MysticAppBar(
         title: 'Chỉnh sửa hồ sơ',
         leading: IconButton(
-          onPressed: isLoading ? null : context.pop,
+          onPressed: isBusy ? null : context.pop,
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
         ),
       ),
@@ -68,6 +75,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             MediaQuery.viewInsetsOf(context).bottom + 24,
           ),
           children: [
+            _EditableAvatar(
+              name: user?.fullName ?? '',
+              avatarUrl: user?.avatarUrl,
+              previewPath: avatarState.previewPath,
+              isLoading: avatarState.isBusy,
+              onPressed: avatarState.isBusy ? null : _changeAvatar,
+            ),
+            const SizedBox(height: 20),
             _field(
               controller: _nameController,
               label: 'Họ và tên',
@@ -122,7 +137,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                 DropdownMenuItem(value: 'FEMALE', child: Text('Nữ')),
                 DropdownMenuItem(value: 'OTHER', child: Text('Khác')),
               ],
-              onChanged: isLoading
+              onChanged: isBusy
                   ? null
                   : (value) => setState(() => _gender = value ?? 'OTHER'),
             ),
@@ -138,9 +153,29 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             MysticProfileSaveButton(
               label: 'Lưu thay đổi hồ sơ',
               isLoading: isLoading,
-              onPressed: isLoading ? null : _submit,
+              onPressed: isBusy ? null : _submit,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _changeAvatar() async {
+    FocusScope.of(context).unfocus();
+    final source = await showAvatarPickerSheet(context);
+    if (source == null || !mounted) return;
+    final success = await ref
+        .read(avatarUpdateControllerProvider.notifier)
+        .selectAndUpload(source);
+    if (!mounted) return;
+    final state = ref.read(avatarUpdateControllerProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Cập nhật ảnh đại diện thành công.'
+              : state.errorMessage ?? 'Không thể cập nhật ảnh đại diện.',
         ),
       ),
     );
@@ -218,6 +253,145 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     context.pop();
     messenger.showSnackBar(
       const SnackBar(content: Text('Cập nhật hồ sơ thành công.')),
+    );
+  }
+}
+
+class _EditableAvatar extends StatelessWidget {
+  const _EditableAvatar({
+    required this.name,
+    required this.avatarUrl,
+    required this.previewPath,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final String name;
+  final String? avatarUrl;
+  final String? previewPath;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = previewPath?.trim();
+    final url = avatarUrl?.trim();
+    final fallback = ColoredBox(
+      color: const Color(0xFF173047),
+      child: Center(
+        child: Text(
+          name.trim().isEmpty
+              ? 'T'
+              : name.trim().characters.first.toUpperCase(),
+          style: const TextStyle(
+            color: MysticColors.paleGold,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+
+    Widget image;
+    if (preview != null && preview.isNotEmpty) {
+      image = Image.file(
+        File(preview),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    } else if (url != null &&
+        url.isNotEmpty &&
+        !url.toLowerCase().endsWith('.svg')) {
+      image = Image.network(
+        url,
+        fit: BoxFit.cover,
+        cacheWidth: 240,
+        cacheHeight: 240,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    } else {
+      image = fallback;
+    }
+
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          label: 'Thay đổi ảnh đại diện',
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            child: SizedBox.square(
+              dimension: 92,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: MysticColors.gold, width: 1.4),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x55D9AE5F), blurRadius: 9),
+                      ],
+                    ),
+                    child: ClipOval(child: image),
+                  ),
+                  if (isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color(0xA0020A10),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: SizedBox.square(
+                            dimension: 23,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: MysticColors.paleGold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      right: 1,
+                      bottom: 1,
+                      child: Container(
+                        width: 29,
+                        height: 29,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9A6815),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFFFD97C)),
+                        ),
+                        child: const Icon(
+                          Icons.photo_camera_rounded,
+                          color: Color(0xFFFFF0C6),
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: onPressed,
+          icon: const Icon(Icons.edit_rounded, size: 15),
+          label: Text(isLoading ? 'Đang cập nhật...' : 'Thay ảnh đại diện'),
+          style: TextButton.styleFrom(
+            foregroundColor: MysticColors.paleGold,
+            visualDensity: VisualDensity.compact,
+            textStyle: const TextStyle(fontSize: 12.5),
+          ),
+        ),
+      ],
     );
   }
 }

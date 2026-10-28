@@ -4,6 +4,7 @@ import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/auth/presentation/pages/auth_gate_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/welcome_page.dart';
 import '../../features/ai_chat/presentation/ai_chat_page.dart';
 import '../../features/daily_fortune/presentation/daily_fortune_page.dart';
@@ -16,6 +17,7 @@ import '../../features/palace_detail/presentation/palace_detail_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/profile/presentation/personal_profile_page.dart';
 import '../../features/profile/presentation/edit_profile_page.dart';
+import '../../features/profile/presentation/account_settings_page.dart';
 import '../../features/wallet/presentation/wallet_page.dart';
 import 'app_shell.dart';
 
@@ -32,9 +34,11 @@ abstract final class AppRoute {
   static const profile = '/profile';
   static const personalProfile = '/profile/personal';
   static const editProfile = '/profile/personal/edit';
+  static const accountSettings = '/profile/settings';
   static const authGate = '/auth-gate';
   static const login = '/login';
   static const register = '/register';
+  static const forgotPassword = '/forgot-password';
   static const welcome = '/welcome';
 }
 
@@ -47,15 +51,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthRoute =
           location == AppRoute.welcome ||
           location == AppRoute.login ||
-          location == AppRoute.register;
+          location == AppRoute.register ||
+          location == AppRoute.forgotPassword;
       final isGate = location == AppRoute.authGate;
       final isGuestChat = location == AppRoute.chat;
+      final isPasswordRecovery = location == AppRoute.forgotPassword;
 
       if (auth.isLoading) {
         return isAuthRoute || isGate || isGuestChat ? null : AppRoute.authGate;
       }
       final isAuthenticated = auth.asData?.value != null;
       if (isAuthenticated) {
+        if (isPasswordRecovery) return null;
         if (!isAuthRoute && !isGate) return null;
         final redirect = state.uri.queryParameters['redirect'];
         return redirect == AppRoute.chat ? AppRoute.chat : AppRoute.home;
@@ -67,6 +74,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoute.welcome, builder: (_, _) => const WelcomePage()),
       GoRoute(path: AppRoute.login, builder: (_, _) => const LoginPage()),
       GoRoute(path: AppRoute.register, builder: (_, _) => const RegisterPage()),
+      GoRoute(
+        path: AppRoute.forgotPassword,
+        builder: (_, state) => ForgotPasswordPage(
+          initialEmail: state.uri.queryParameters['email'] ?? '',
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => AppShell(navigationShell: shell),
         branches: [
@@ -127,6 +140,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'charts',
                     builder: (_, _) => const MyChartsPage(),
+                  ),
+                  GoRoute(
+                    path: 'settings',
+                    builder: (_, _) => const AccountSettingsPage(),
                   ),
                 ],
               ),

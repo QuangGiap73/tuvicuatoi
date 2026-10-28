@@ -81,6 +81,67 @@ class AuthRepository {
     }
   }
 
+  Future<int?> requestPasswordReset(String email) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/auth/forgot-password/',
+        data: {'email': email.trim()},
+      );
+      final data = response.data;
+      if (data?['success'] != true) {
+        throw const AuthException('Không thể gửi mã xác thực.');
+      }
+      return (data?['expiresInMinutes'] as num?)?.toInt();
+    } on DioException catch (error) {
+      throw AuthException(_messageFrom(error));
+    }
+  }
+
+  Future<String> verifyPasswordResetCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/auth/verify-reset-code/',
+        data: {'email': email.trim(), 'code': code.trim()},
+      );
+      final data = response.data;
+      final token = data?['recoveryToken'] ?? data?['reset_token'];
+      if (data?['success'] != true ||
+          data?['valid'] != true ||
+          token == null ||
+          token.toString().isEmpty) {
+        throw const AuthException('Mã xác thực không hợp lệ hoặc đã hết hạn.');
+      }
+      return token.toString();
+    } on DioException catch (error) {
+      throw AuthException(_messageFrom(error));
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String resetToken,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/auth/reset-password/',
+        data: {
+          'email': email.trim(),
+          'reset_token': resetToken,
+          'new_password': newPassword,
+        },
+      );
+      if (response.data?['success'] != true) {
+        throw const AuthException('Không thể đặt lại mật khẩu.');
+      }
+    } on DioException catch (error) {
+      throw AuthException(_messageFrom(error));
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _dio.post<void>('/auth/logout/');

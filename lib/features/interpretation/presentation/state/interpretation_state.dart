@@ -7,15 +7,20 @@ class InterpretationState {
     this.selectedTab = InterpretationTab.overview,
     this.selectedPalace,
     this.sections = const [],
-    this.unlockedKeys = const {},
+    this.canonicalUnlockedKeys = const {},
+    this.legacyUnlockKeys = const [],
     this.contentByMode = const {},
     this.isLoadingChart = false,
     this.isLoadingSections = false,
     this.isLoadingUnlocks = false,
     this.isLoadingInterpretation = false,
     this.isSavingChart = false,
-    this.unlockingSectionId,
-    this.errorMessage,
+    this.unlockStatusBySection = const {},
+    this.chartError,
+    this.catalogError,
+    this.permissionError,
+    this.contentError,
+    this.unlockError,
   });
 
   final InterpretationChartContext? context;
@@ -23,18 +28,35 @@ class InterpretationState {
   final InterpretationTab selectedTab;
   final String? selectedPalace;
   final List<ReadingSection> sections;
-  final Set<String> unlockedKeys;
+  final Set<ReadingSectionKey> canonicalUnlockedKeys;
+  final List<LegacyUnlockKey> legacyUnlockKeys;
   final Map<InterpretationMode, InterpretationData> contentByMode;
   final bool isLoadingChart;
   final bool isLoadingSections;
   final bool isLoadingUnlocks;
   final bool isLoadingInterpretation;
   final bool isSavingChart;
-  final String? unlockingSectionId;
-  final String? errorMessage;
+  final Map<String, UnlockStatus> unlockStatusBySection;
+  final String? chartError;
+  final String? catalogError;
+  final String? permissionError;
+  final String? contentError;
+  final String? unlockError;
 
   InterpretationData? get interpretation => contentByMode[mode];
   bool get isBusy => isLoadingChart || isSavingChart;
+  bool get isUnlocking => unlockStatusBySection.values.any(
+    (status) =>
+        status == UnlockStatus.confirming ||
+        status == UnlockStatus.submitting ||
+        status == UnlockStatus.syncing,
+  );
+  String? get errorMessage =>
+      unlockError ??
+      permissionError ??
+      contentError ??
+      catalogError ??
+      chartError;
 
   InterpretationState copyWith({
     InterpretationChartContext? context,
@@ -43,17 +65,25 @@ class InterpretationState {
     String? selectedPalace,
     bool clearSelectedPalace = false,
     List<ReadingSection>? sections,
-    Set<String>? unlockedKeys,
+    Set<ReadingSectionKey>? canonicalUnlockedKeys,
+    List<LegacyUnlockKey>? legacyUnlockKeys,
     Map<InterpretationMode, InterpretationData>? contentByMode,
     bool? isLoadingChart,
     bool? isLoadingSections,
     bool? isLoadingUnlocks,
     bool? isLoadingInterpretation,
     bool? isSavingChart,
-    String? unlockingSectionId,
-    bool clearUnlockingSection = false,
-    String? errorMessage,
-    bool clearError = false,
+    Map<String, UnlockStatus>? unlockStatusBySection,
+    String? chartError,
+    bool clearChartError = false,
+    String? catalogError,
+    bool clearCatalogError = false,
+    String? permissionError,
+    bool clearPermissionError = false,
+    String? contentError,
+    bool clearContentError = false,
+    String? unlockError,
+    bool clearUnlockError = false,
   }) => InterpretationState(
     context: context ?? this.context,
     mode: mode ?? this.mode,
@@ -62,7 +92,8 @@ class InterpretationState {
         ? null
         : selectedPalace ?? this.selectedPalace,
     sections: sections ?? this.sections,
-    unlockedKeys: unlockedKeys ?? this.unlockedKeys,
+    canonicalUnlockedKeys: canonicalUnlockedKeys ?? this.canonicalUnlockedKeys,
+    legacyUnlockKeys: legacyUnlockKeys ?? this.legacyUnlockKeys,
     contentByMode: contentByMode ?? this.contentByMode,
     isLoadingChart: isLoadingChart ?? this.isLoadingChart,
     isLoadingSections: isLoadingSections ?? this.isLoadingSections,
@@ -70,9 +101,13 @@ class InterpretationState {
     isLoadingInterpretation:
         isLoadingInterpretation ?? this.isLoadingInterpretation,
     isSavingChart: isSavingChart ?? this.isSavingChart,
-    unlockingSectionId: clearUnlockingSection
+    unlockStatusBySection: unlockStatusBySection ?? this.unlockStatusBySection,
+    chartError: clearChartError ? null : chartError ?? this.chartError,
+    catalogError: clearCatalogError ? null : catalogError ?? this.catalogError,
+    permissionError: clearPermissionError
         ? null
-        : unlockingSectionId ?? this.unlockingSectionId,
-    errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+        : permissionError ?? this.permissionError,
+    contentError: clearContentError ? null : contentError ?? this.contentError,
+    unlockError: clearUnlockError ? null : unlockError ?? this.unlockError,
   );
 }
