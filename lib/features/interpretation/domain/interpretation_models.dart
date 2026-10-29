@@ -586,35 +586,35 @@ class InterpretationData {
 
   List<StructuredReadingSection> get overviewSections =>
       _parseStructuredSections(
-        _interpretationSource(rawData)['overviewTopics'] ??
-            _interpretationSource(rawData)['overview_topics'] ??
-            _interpretationSource(rawData)['overview'],
+        _unwrapInterpretation(rawData)['overviewTopics'] ??
+            _unwrapInterpretation(rawData)['overview_topics'] ??
+            _unwrapInterpretation(rawData)['overview'],
       );
 
   List<StructuredReadingSection> get palaceReadingSections =>
       _parseStructuredSections(
-        _interpretationSource(rawData)['palaceReadings'] ??
-            _interpretationSource(rawData)['palace_readings'],
+        _unwrapInterpretation(rawData)['palaceReadings'] ??
+            _unwrapInterpretation(rawData)['palace_readings'],
       );
 
   List<StructuredReadingSection> get guidanceSections =>
       _parseStructuredSections(
-        _interpretationSource(rawData)['fengShuiAndGuidance'] ??
-            _interpretationSource(rawData)['feng_shui_and_guidance'] ??
-            _interpretationSource(rawData)['guidance'],
+        _unwrapInterpretation(rawData)['fengShuiAndGuidance'] ??
+            _unwrapInterpretation(rawData)['feng_shui_and_guidance'] ??
+            _unwrapInterpretation(rawData)['guidance'],
       );
 
   List<StructuredReadingSection> get timingReadingSections =>
       _parseStructuredSections(
-        _interpretationSource(rawData)['timingReadings'] ??
-            _interpretationSource(rawData)['timing_readings'] ??
-            _interpretationSource(rawData)['timing'],
+        _unwrapInterpretation(rawData)['timingReadings'] ??
+            _unwrapInterpretation(rawData)['timing_readings'] ??
+            _unwrapInterpretation(rawData)['timing'],
       );
 
   TimingReading get timing => TimingReading.fromJson(
-    _interpretationSource(rawData)['timingReadings'] ??
-        _interpretationSource(rawData)['timing_readings'] ??
-        _interpretationSource(rawData)['timing'],
+    _unwrapInterpretation(rawData)['timingReadings'] ??
+        _unwrapInterpretation(rawData)['timing_readings'] ??
+        _unwrapInterpretation(rawData)['timing'],
   );
 
   ContentSource sourceFor(String field) =>
@@ -761,12 +761,24 @@ class InterpretationData {
     // original response in rawData so new backend fields remain discoverable.
     final source = _unwrapInterpretation(json);
     final overview = _map(source['overview']);
-    final overviewSections = _parseStructuredSections(source['overview']);
+    final overviewSections = _parseStructuredSections(
+      source['overviewTopics'] ??
+          source['overview_topics'] ??
+          source['overview'],
+    );
     final palaceReadingSections = _parseStructuredSections(
       source['palaceReadings'] ?? source['palace_readings'],
     );
-    final guidanceSections = _parseStructuredSections(source['guidance']);
-    final timing = TimingReading.fromJson(source['timing']);
+    final guidanceSections = _parseStructuredSections(
+      source['fengShuiAndGuidance'] ??
+          source['feng_shui_and_guidance'] ??
+          source['guidance'],
+    );
+    final timingSource =
+        source['timingReadings'] ??
+        source['timing_readings'] ??
+        source['timing'];
+    final timing = TimingReading.fromJson(timingSource);
     String? overviewText(String id) =>
         _optional(_findStructuredSection(overviewSections, id)?.fullText);
     final guidanceText = _optional(
@@ -949,9 +961,6 @@ class InterpretationData {
     );
   }
 }
-
-Map<String, dynamic> _interpretationSource(Map<String, dynamic> rawData) =>
-    _unwrapInterpretation(rawData);
 
 List<ReadingContentItem> _parseReadingItems(Object? value) {
   if (value is! List) return const [];

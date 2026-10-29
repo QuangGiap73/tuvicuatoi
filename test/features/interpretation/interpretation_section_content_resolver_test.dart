@@ -238,6 +238,88 @@ void main() {
     }
   });
 
+  test('maps canonical timing slugs from legacy engine camelCase keys', () {
+    final interpretation = InterpretationData.fromJson({
+      'timing': {
+        'daiVan': {
+          'title': 'Đại Vận',
+          'items': [
+            {'title': 'Chu kỳ 10 năm', 'content': 'Nội dung đại vận đầy đủ'},
+          ],
+        },
+        'nguyetVan': {
+          'title': 'Nguyệt Vận',
+          'items': [
+            {'content': 'Nội dung nguyệt vận đầy đủ'},
+          ],
+        },
+      },
+    });
+
+    expect(
+      resolver
+          .resolve(
+            section: section('dai_van'),
+            interpretation: interpretation,
+            chartData: const {},
+          )
+          .fullContent,
+      contains('Nội dung đại vận đầy đủ'),
+    );
+    expect(
+      resolver
+          .resolve(
+            section: section('nguyet_van'),
+            interpretation: interpretation,
+            chartData: const {},
+          )
+          .fullContent,
+      contains('Nội dung nguyệt vận đầy đủ'),
+    );
+  });
+
+  test('maps canonical guidance slugs from documented engine ids', () {
+    final interpretation = InterpretationData.fromJson({
+      'guidance': [
+        {
+          'id': 'phong-thuy-nen-tang',
+          'title': 'Nền tảng phong thủy',
+          'items': [
+            {'content': 'Nội dung nền tảng đầy đủ'},
+          ],
+        },
+        {
+          'id': 'phong-thuy-dieu-chinh',
+          'title': 'Điều chỉnh theo lá số',
+          'items': [
+            {'content': 'Nội dung ứng dụng đầy đủ'},
+          ],
+        },
+      ],
+    });
+
+    expect(
+      resolver
+          .resolve(
+            section: section('nen_tang_phong_thuy'),
+            interpretation: interpretation,
+            chartData: const {},
+          )
+          .fullContent,
+      contains('Nội dung nền tảng đầy đủ'),
+    );
+    expect(
+      resolver
+          .resolve(
+            section: section('vat_pham_va_ung_dung'),
+            interpretation: interpretation,
+            chartData: const {},
+          )
+          .fullContent,
+      contains('Nội dung ứng dụng đầy đủ'),
+    );
+  });
+
   test('does not invent a five-year forecast', () {
     final content = resolver.resolve(
       section: section(

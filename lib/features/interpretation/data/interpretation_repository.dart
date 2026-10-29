@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_provider.dart';
+import 'interpretation_performance_tracker.dart';
 import '../domain/interpretation_models.dart';
 import '../domain/section_content.dart';
 import '../domain/topic_interpretation.dart';
@@ -15,13 +16,20 @@ class InterpretationException implements Exception {
 }
 
 class InterpretationRepository {
-  const InterpretationRepository(this._dio);
+  const InterpretationRepository(
+    this._dio, {
+    InterpretationPerformanceTracker? performanceTracker,
+  }) : _performanceTracker = performanceTracker;
   final Dio _dio;
+  final InterpretationPerformanceTracker? _performanceTracker;
+
+  Future<T> _measure<T>(String operation, Future<T> Function() action) =>
+      _performanceTracker?.measure(operation, action) ?? action();
 
   Future<TopicInterpretation> getTopicInterpretation({
     required String topic,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('topic', () async {
     final normalizedTopic = topic.trim();
     if (normalizedTopic.isEmpty) {
       throw const InterpretationException('Chuyên đề không hợp lệ.');
@@ -55,12 +63,12 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   Future<ReadingCatalog> getCatalog({
     String? chartId,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('catalog', () async {
     try {
       final response = await _dio.get<Object?>(
         '/charts/reading-sections/',
@@ -82,9 +90,11 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
-  Future<List<ReadingSection>> getSections({CancelToken? cancelToken}) async {
+  Future<List<ReadingSection>> getSections({
+    CancelToken? cancelToken,
+  }) => _measure('sections', () async {
     try {
       final response = await _dio.get<Object?>(
         '/charts/reading-sections/',
@@ -109,12 +119,12 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   Future<Set<String>> getUnlocks({
     required String chartId,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('permissions', () async {
     try {
       final response = await _dio.get<Object?>(
         '/charts/reading-unlocks/',
@@ -135,12 +145,12 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   Future<InterpretationData> getSavedInterpretation({
     required String chartId,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('saved-content', () async {
     try {
       final response = await _dio.get<Object?>(
         '/charts/$chartId/interpretation/',
@@ -160,14 +170,14 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   Future<InterpretationData> generate({
     required Map<String, dynamic> chartData,
     required InterpretationMode mode,
     DateTime? readingDate,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('generate-${mode.apiValue}', () async {
     try {
       final targetDate = readingDate ?? DateTime.now();
       final response = await _dio.post<Object?>(
@@ -194,7 +204,7 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   Future<ReadingUnlockResult> unlock({
     required String chartId,
@@ -202,7 +212,7 @@ class InterpretationRepository {
     required ReadingSection section,
     String? voucherCode,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('unlock-single', () async {
     try {
       final response = await _dio.post<Object?>(
         '/charts/reading-unlocks/',
@@ -229,7 +239,7 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   Future<ReadingUnlockResult> unlockBundle({
     required String chartId,
@@ -238,7 +248,7 @@ class InterpretationRepository {
     String scope = 'bundle',
     String? voucherCode,
     CancelToken? cancelToken,
-  }) async {
+  }) => _measure('unlock-bundle', () async {
     if (sections.isEmpty) {
       throw const InterpretationException('Không có mục nào cần mở khóa.');
     }
@@ -277,7 +287,7 @@ class InterpretationRepository {
       if (CancelToken.isCancel(error)) rethrow;
       throw _exception(error);
     }
-  }
+  });
 
   static InterpretationException _exception(DioException error) =>
       InterpretationException(
@@ -301,5 +311,8 @@ class InterpretationRepository {
 }
 
 final interpretationRepositoryProvider = Provider<InterpretationRepository>(
-  (ref) => InterpretationRepository(ref.watch(dioProvider)),
+  (ref) => InterpretationRepository(
+    ref.watch(dioProvider),
+    performanceTracker: ref.watch(interpretationPerformanceTrackerProvider),
+  ),
 );

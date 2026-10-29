@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tuvicuatoi/features/interpretation/data/interpretation_repository.dart';
 import 'package:tuvicuatoi/features/interpretation/domain/interpretation_models.dart';
+import 'package:tuvicuatoi/features/interpretation/domain/interpretation_section_content_resolver.dart';
 import 'package:tuvicuatoi/features/interpretation/presentation/controllers/interpretation_controller.dart';
 
 void main() {
@@ -115,11 +116,80 @@ void main() {
   });
 
   test(
+    'confirmed unlock refreshes full content and removes the paywall state',
+    () async {
+      final repository = _FakeInterpretationRepository(
+        postKeys: {keyOf(first)},
+        permissionsAfterPost: {keyOf(first)},
+        generatedData: const InterpretationData(
+          rawData: {
+            'overviewTopics': [
+              {
+                'sectionSlug': 'ban_menh_va_than',
+                'summary': 'Preview before purchase.',
+                'isUnlocked': false,
+              },
+            ],
+          },
+        ),
+        generatedAfterUnlock: const InterpretationData(
+          rawData: {
+            'overviewTopics': [
+              {
+                'sectionSlug': 'ban_menh_va_than',
+                'summary': 'Full introduction.',
+                'isUnlocked': true,
+                'items': [
+                  {
+                    'title': 'Detailed destiny',
+                    'content':
+                        'Complete paid interpretation returned after unlock.',
+                  },
+                ],
+              },
+            ],
+          },
+        ),
+      );
+      final container = containerFor(repository);
+      await Future<void>.delayed(Duration.zero);
+      final controller = container.read(
+        interpretationControllerProvider.notifier,
+      );
+
+      expect(controller.isUnlocked(first), isFalse);
+
+      await controller.unlock(first);
+
+      final state = container.read(interpretationControllerProvider);
+      final content = const InterpretationSectionContentResolver().resolve(
+        section: first,
+        interpretation: state.interpretation!,
+        chartData: state.context!.chartData,
+      );
+      expect(controller.isUnlocked(first), isTrue);
+      expect(controller.statusFor(first), UnlockStatus.unlocked);
+      expect(
+        content.fullContent,
+        contains('Complete paid interpretation returned after unlock.'),
+      );
+      expect(content.displayContent, isNot(contains('Mở khóa bằng Xu')));
+      expect(repository.generateCallCount, greaterThanOrEqualTo(2));
+    },
+  );
+
+  test(
     'one purchase grants both reading modes when catalog confirms it',
     () async {
       final repository = _FakeInterpretationRepository(
         postKeys: {everydayKeyOf(first)},
         permissionsAfterPost: {everydayKeyOf(first)},
+        generatedData: const InterpretationData(
+          personalityCore: 'Locked preview.',
+        ),
+        generatedAfterUnlock: const InterpretationData(
+          personalityCore: 'Full content shared by both modes.',
+        ),
       );
       final container = containerFor(repository);
       await Future<void>.delayed(Duration.zero);
@@ -144,7 +214,15 @@ void main() {
       expect(controller.isUnlocked(first), isTrue);
 
       controller.changeMode(InterpretationMode.deep);
+      await Future<void>.delayed(Duration.zero);
       expect(controller.isUnlocked(first), isTrue);
+      expect(
+        container
+            .read(interpretationControllerProvider)
+            .interpretation
+            ?.personalityCore,
+        'Full content shared by both modes.',
+      );
     },
   );
 
@@ -182,13 +260,18 @@ class _FakeInterpretationRepository extends InterpretationRepository {
     required this.permissionsAfterPost,
     this.savedData = const InterpretationData(),
     this.throwOnGenerate = false,
+    this.generatedData,
+    this.generatedAfterUnlock,
   }) : super(Dio());
 
   final Set<String> postKeys;
   final Set<String> permissionsAfterPost;
   final InterpretationData savedData;
   final bool throwOnGenerate;
+  final InterpretationData? generatedData;
+  final InterpretationData? generatedAfterUnlock;
   Set<String> permissions = {};
+  int generateCallCount = 0;
   final List<InterpretationMode> generatedModes = [];
   final List<InterpretationMode> unlockModes = [];
 
@@ -245,6 +328,7 @@ class _FakeInterpretationRepository extends InterpretationRepository {
     DateTime? readingDate,
     CancelToken? cancelToken,
   }) async {
+    generateCallCount++;
     if (throwOnGenerate) {
       throw const InterpretationException(
         'Dữ liệu lá số không hợp lệ hoặc chưa đủ 12 cung',
@@ -252,6 +336,10 @@ class _FakeInterpretationRepository extends InterpretationRepository {
       );
     }
     generatedModes.add(mode);
+    if (permissions.isNotEmpty && generatedAfterUnlock != null) {
+      return generatedAfterUnlock!;
+    }
+    if (generatedData != null) return generatedData!;
     return InterpretationData(
       aiShortSummary: mode.apiValue,
       rawData: {'mode': mode.apiValue},

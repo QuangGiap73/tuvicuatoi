@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/interpretation_models.dart';
+import '../../domain/interpretation_section_content_resolver.dart';
 import '../../domain/section_content.dart';
+import '../controllers/interpretation_controller.dart';
 import '../providers/topic_interpretation_provider.dart';
 import 'rich_interpretation_text.dart';
 
@@ -30,7 +32,7 @@ Future<void> showInterpretationSectionPreview(
   ),
 );
 
-class _SectionPreviewSheet extends StatelessWidget {
+class _SectionPreviewSheet extends ConsumerWidget {
   const _SectionPreviewSheet({
     required this.section,
     required this.content,
@@ -50,12 +52,34 @@ class _SectionPreviewSheet extends StatelessWidget {
   final bool isSharedContent;
 
   @override
-  Widget build(BuildContext context) {
-    final text = isUnlocked ? content.displayContent : content.preview;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(interpretationControllerProvider);
+    final controller = ref.read(interpretationControllerProvider.notifier);
+    final liveSection = state.sections.cast<ReadingSection?>().firstWhere(
+      (item) =>
+          item?.groupSlug == section.groupSlug &&
+          item?.sectionSlug == section.sectionSlug,
+      orElse: () => null,
+    );
+    final activeSection = liveSection ?? section;
+    final interpretation = state.interpretation;
+    final activeContent = interpretation == null
+        ? content
+        : const InterpretationSectionContentResolver().resolve(
+            section: activeSection,
+            interpretation: interpretation,
+            chartData: state.context?.chartData ?? const {},
+          );
+    final activeUnlocked = liveSection == null
+        ? isUnlocked
+        : controller.isUnlocked(activeSection);
+    final text = activeUnlocked
+        ? activeContent.displayContent
+        : activeContent.preview;
     return SafeArea(
       top: false,
       child: DraggableScrollableSheet(
-        initialChildSize: isUnlocked ? .78 : .58,
+        initialChildSize: activeUnlocked ? .78 : .58,
         minChildSize: .42,
         maxChildSize: .92,
         expand: false,
@@ -86,9 +110,9 @@ class _SectionPreviewSheet extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (section.groupTitle.trim().isNotEmpty) ...[
+                          if (activeSection.groupTitle.trim().isNotEmpty) ...[
                             Text(
-                              section.groupTitle.toUpperCase(),
+                              activeSection.groupTitle.toUpperCase(),
                               style: const TextStyle(
                                 color: Color(0xFF9A681F),
                                 fontSize: 9.5,
@@ -99,7 +123,7 @@ class _SectionPreviewSheet extends StatelessWidget {
                             const SizedBox(height: 4),
                           ],
                           Text(
-                            section.title,
+                            activeSection.title,
                             style: const TextStyle(
                               color: Color(0xFF4D2D13),
                               fontFamily: 'serif',
@@ -108,10 +132,10 @@ class _SectionPreviewSheet extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          if (section.subtitle.trim().isNotEmpty) ...[
+                          if (activeSection.subtitle.trim().isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
-                              section.subtitle,
+                              activeSection.subtitle,
                               style: const TextStyle(
                                 color: Color(0xFF806445),
                                 fontSize: 11.5,
@@ -131,6 +155,11 @@ class _SectionPreviewSheet extends StatelessWidget {
                 ),
               ),
               const Divider(color: Color(0x66996A28), height: 1),
+              _ReadingModeSwitch(
+                mode: state.mode,
+                isLoading: state.isLoadingInterpretation,
+                onChanged: controller.changeMode,
+              ),
               if (isSharedContent)
                 Container(
                   width: double.infinity,
@@ -156,7 +185,10 @@ class _SectionPreviewSheet extends StatelessWidget {
                   controller: scrollController,
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
                   children: [
-                    if (isUnlocked && topic?.trim().isNotEmpty == true)
+                    if (state.isLoadingInterpretation &&
+                        state.interpretation == null)
+                      const _ContentLoading()
+                    else if (activeUnlocked && topic?.trim().isNotEmpty == true)
                       _TopicContent(topic: topic!.trim())
                     else if (text.isEmpty)
                       const Text(
@@ -168,12 +200,12 @@ class _SectionPreviewSheet extends StatelessWidget {
                         children: [
                           RichInterpretationText(
                             text: text,
-                            maxLines: isUnlocked ? null : 6,
-                            overflow: isUnlocked
+                            maxLines: activeUnlocked ? null : 6,
+                            overflow: activeUnlocked
                                 ? TextOverflow.visible
                                 : TextOverflow.ellipsis,
                           ),
-                          if (!isUnlocked)
+                          if (!activeUnlocked)
                             Positioned(
                               left: 0,
                               right: 0,
@@ -196,7 +228,7 @@ class _SectionPreviewSheet extends StatelessWidget {
                             ),
                         ],
                       ),
-                    if (!isUnlocked) ...[
+                    if (!activeUnlocked) ...[
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -223,7 +255,7 @@ class _SectionPreviewSheet extends StatelessWidget {
                           },
                           icon: const Icon(Icons.lock_open_rounded, size: 18),
                           label: Text(
-                            'Mở khóa ${section.coinCost} Xu để đọc tiếp',
+                            'Mở khóa ${activeSection.coinCost} Xu để đọc tiếp',
                           ),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF8D5A12),
@@ -251,6 +283,118 @@ class _SectionPreviewSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReadingModeSwitch extends StatelessWidget {
+  const _ReadingModeSwitch({
+    required this.mode,
+    required this.isLoading,
+    required this.onChanged,
+  });
+
+  final InterpretationMode mode;
+  final bool isLoading;
+  final ValueChanged<InterpretationMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 11, 18, 0),
+    child: Column(
+      children: [
+        Container(
+          height: 39,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: const Color(0x1F6D431A),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0x66986A2B)),
+          ),
+          child: Row(
+            children: [
+              _ModeButton(
+                label: 'BẢN TINH GỌN',
+                selected: mode == InterpretationMode.everyday,
+                onTap: () => onChanged(InterpretationMode.everyday),
+              ),
+              const SizedBox(width: 4),
+              _ModeButton(
+                label: 'BẢN CHUYÊN SÂU',
+                selected: mode == InterpretationMode.deep,
+                onTap: () => onChanged(InterpretationMode.deep),
+              ),
+            ],
+          ),
+        ),
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 5),
+            child: LinearProgressIndicator(
+              minHeight: 2,
+              color: Color(0xFFB77A19),
+              backgroundColor: Color(0x22B77A19),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Material(
+      color: selected ? const Color(0xFF4B2B12) : Colors.transparent,
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        onTap: selected ? null : onTap,
+        borderRadius: BorderRadius.circular(7),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? const Color(0xFFFFD878)
+                  : const Color(0xFF785B3C),
+              fontSize: 10,
+              letterSpacing: .25,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _ContentLoading extends StatelessWidget {
+  const _ContentLoading();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 48),
+    child: Center(
+      child: Column(
+        children: [
+          CircularProgressIndicator(color: Color(0xFF9A6416)),
+          SizedBox(height: 12),
+          Text(
+            'Đang tải bản luận giải...',
+            style: TextStyle(color: Color(0xFF786044), fontSize: 12),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _TopicContent extends ConsumerWidget {

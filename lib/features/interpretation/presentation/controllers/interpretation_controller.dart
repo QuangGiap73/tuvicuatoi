@@ -238,14 +238,17 @@ class InterpretationController extends Notifier<InterpretationState> {
         expectedChartId: chartId,
       );
       _debugLegacyUnlocks(snapshot);
-      _cachePermissions(chartId, snapshot.canonicalKeys);
+      final canonicalPermissions = _applyModeSharingPolicy(
+        snapshot.canonicalKeys,
+      );
+      _cachePermissions(chartId, canonicalPermissions);
       final reconciledStatuses = _reconcileUnlockStatuses(
         state.unlockStatusBySection,
-        snapshot.canonicalKeys,
+        canonicalPermissions,
       );
       _unlockStatusCache[chartId] = {...reconciledStatuses};
       state = state.copyWith(
-        canonicalUnlockedKeys: snapshot.canonicalKeys,
+        canonicalUnlockedKeys: canonicalPermissions,
         legacyUnlockKeys: snapshot.legacyKeys,
         unlockStatusBySection: reconciledStatuses,
         isLoadingUnlocks: false,
@@ -253,7 +256,7 @@ class InterpretationController extends Notifier<InterpretationState> {
           UnlockStatus.syncing,
         ),
       );
-      return snapshot.canonicalKeys;
+      return canonicalPermissions;
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) return null;
       _setTaskError(error.userMessage, unlocks: true);
@@ -400,7 +403,9 @@ class InterpretationController extends Notifier<InterpretationState> {
       isLoadingInterpretation: false,
       clearContentError: true,
     );
-    loadInterpretation(force: state.contentByMode.containsKey(mode));
+    // Hiển thị cache theo chartId + mode ngay; chỉ gọi mạng nếu chế độ mới
+    // chưa có dữ liệu để thao tác chuyển qua lại luôn mượt.
+    loadInterpretation();
   }
 
   bool isUnlocked(ReadingSection section) {
@@ -570,6 +575,7 @@ class InterpretationController extends Notifier<InterpretationState> {
       if (!_isCurrent(session, token)) return result;
       if (permissions?.contains(key) == true) {
         _setUnlockStatuses([key], UnlockStatus.unlocked, clearError: true);
+        _invalidateSharedModeContent(mode);
         await loadInterpretation(force: true);
       } else {
         _setUnlockStatuses(
@@ -706,6 +712,7 @@ class InterpretationController extends Notifier<InterpretationState> {
       _setUnlockStatuses(resolved, UnlockStatus.unlocked);
       if (unresolved.isEmpty) {
         state = state.copyWith(clearUnlockError: true);
+        _invalidateSharedModeContent(mode);
         await loadInterpretation(force: true);
       } else {
         _setUnlockStatuses(
@@ -921,6 +928,44 @@ class InterpretationController extends Notifier<InterpretationState> {
     _permissionCache[chartId] = Map.unmodifiable(byMode);
   }
 
+  Set<ReadingSectionKey> _applyModeSharingPolicy(
+    Set<ReadingSectionKey> permissions,
+  ) {
+    if (state.catalog?.pricing.buyOneGetBothModes != true) {
+      return permissions;
+    }
+    final shared = <ReadingSectionKey>{};
+    for (final key in permissions) {
+      for (final mode in InterpretationMode.values) {
+        shared.add(
+          ReadingSectionKey(
+            chartId: key.chartId,
+            mode: mode,
+            groupSlug: key.groupSlug,
+            sectionSlug: key.sectionSlug,
+          ),
+        );
+      }
+    }
+    return Set.unmodifiable(shared);
+  }
+
+  void _invalidateSharedModeContent(InterpretationMode purchasedMode) {
+    if (state.catalog?.pricing.buyOneGetBothModes != true) return;
+    final chartId = state.context?.chartId;
+    final retained = <InterpretationMode, InterpretationData>{
+      for (final entry in state.contentByMode.entries)
+        if (entry.key == purchasedMode) entry.key: entry.value,
+    };
+    if (chartId != null) {
+      final cached = _contentCache[chartId];
+      if (cached != null) {
+        cached.removeWhere((mode, _) => mode != purchasedMode);
+      }
+    }
+    state = state.copyWith(contentByMode: Map.unmodifiable(retained));
+  }
+
   static void _debugLegacyUnlocks(ReadingUnlockSnapshot snapshot) {
     if (!kDebugMode || snapshot.legacyKeys.isEmpty) return;
     final counts = <LegacyUnlockKeyKind, int>{};
@@ -933,16 +978,19 @@ class InterpretationController extends Notifier<InterpretationState> {
     );
   }
 
-  static Set<ReadingSectionKey> _permissionsFromCatalog(
+  Set<ReadingSectionKey> _permissionsFromCatalog(
     String chartId,
     ReadingCatalog catalog,
   ) {
     final result = <ReadingSectionKey>{};
+    final modes = catalog.pricing.buyOneGetBothModes
+        ? InterpretationMode.values
+        : <InterpretationMode>[state.mode];
     for (final section in catalog.sections) {
       if (!catalog.allUnlocked && !section.isUnlocked && !section.isFree) {
         continue;
       }
-      for (final mode in InterpretationMode.values) {
+      for (final mode in modes) {
         result.add(
           ReadingSectionKey(
             chartId: chartId,

@@ -135,8 +135,35 @@ class InterpretationSectionContentResolver {
         return candidate;
       }
     }
+    // Adapter cho response engine đời cũ. Catalog 35 mục dùng snake_case,
+    // trong khi /tuvi/read cũ trả timing bằng camelCase và guidance bằng ID
+    // `phong-thuy-*`. Chỉ ánh xạ các cặp đã được backend định nghĩa.
+    final aliases = _engineAliasesBySection[section.sectionSlug] ?? const [];
+    for (final alias in aliases) {
+      final expected = _canonicalKey(alias);
+      for (final candidate in candidates) {
+        final keys = <String>{
+          candidate.id,
+          candidate.sectionSlug,
+          candidate.topicCode,
+        }.where((value) => value.trim().isNotEmpty).map(_canonicalKey);
+        if (keys.contains(expected)) return candidate;
+      }
+    }
     return null;
   }
+
+  static const _engineAliasesBySection = <String, List<String>>{
+    'dai_van': ['daiVan'],
+    'dai_van_10_nam': ['daiVan'],
+    'tieu_van': ['tieuVan'],
+    'tieu_han_nam_nay': ['tieuVan'],
+    'nguyet_van': ['nguyetVan'],
+    'nhat_van': ['nhatVan'],
+    'nen_tang_phong_thuy': ['phong-thuy-nen-tang'],
+    'khong_gian_song': ['phong-thuy-huong-uu-tien'],
+    'vat_pham_va_ung_dung': ['phong-thuy-dieu-chinh'],
+  };
 
   static String _canonicalKey(String value) {
     var normalized = value.toLowerCase();
