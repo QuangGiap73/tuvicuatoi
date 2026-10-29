@@ -491,8 +491,36 @@ class InterpretationController extends Notifier<InterpretationState> {
       if (id.trim().isEmpty) {
         throw const ChartException('Máy chủ không trả về mã lá số đã lưu.');
       }
+      final fallback = SavedChart(
+        id: id,
+        name: result.fullName,
+        gender: result.gender,
+        solarDate: result.solarDate,
+        lunarDate: result.lunarDate,
+        createdAt: '',
+        hourBranch: result.hourBranch,
+        menh: result.menh,
+        cuc: result.cuc,
+        chartData: result.rawData,
+      );
+      var savedSummary = fallback;
+      var savedChartData = context.chartData;
+      try {
+        final detail = await ref
+            .read(chartRepositoryProvider)
+            .getChartDetail(fallback);
+        savedSummary = detail.summary;
+        savedChartData = _mergeChartData(context.chartData, detail.chartData);
+      } on ChartException {
+        // Việc lưu đã thành công. Giữ dữ liệu vừa lập làm fallback; lần mở
+        // sau từ danh sách lá số vẫn tải lại bản chuẩn hóa từ backend.
+      }
       state = state.copyWith(
-        context: context.copyWith(chartId: id),
+        context: context.copyWith(
+          chartId: id,
+          chartData: savedChartData,
+          savedSummary: savedSummary,
+        ),
         isSavingChart: false,
       );
       ref.read(chartGenerationControllerProvider.notifier).markSaved(id);
@@ -502,7 +530,8 @@ class InterpretationController extends Notifier<InterpretationState> {
         // Lá số đã được lưu thành công; lỗi làm mới hồ sơ không được biến
         // giao dịch thành thất bại hoặc khiến người dùng lưu trùng.
       }
-      loadSections();
+      await loadSections();
+      await loadInterpretation(force: true);
       return true;
     } on ChartException catch (error) {
       state = state.copyWith(isSavingChart: false, chartError: error.message);

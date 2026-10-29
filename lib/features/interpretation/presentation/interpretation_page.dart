@@ -12,6 +12,9 @@ import '../domain/interpretation_models.dart';
 import '../domain/interpretation_section_content_resolver.dart';
 import '../domain/section_content.dart';
 import 'controllers/interpretation_controller.dart';
+import 'providers/interpretation_catalog_provider.dart';
+import 'providers/interpretation_content_provider.dart';
+import 'providers/reading_permission_provider.dart';
 import 'state/interpretation_state.dart';
 import 'widgets/bundle_unlock_dialog.dart';
 import 'widgets/interpretation_section_card.dart';
@@ -24,7 +27,34 @@ class InterpretationPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(interpretationControllerProvider);
+    final contentState = ref.watch(interpretationContentProvider);
+    final catalogState = ref.watch(interpretationCatalogProvider);
+    final permissionState = ref.watch(readingPermissionProvider);
+    // Preserve the proven presentation contract while the UI is migrated to
+    // smaller providers. This is a view-only snapshot; mutations still go
+    // through InterpretationController.
+    final state = InterpretationState(
+      context: contentState.context,
+      mode: contentState.mode,
+      selectedTab: catalogState.selectedTab,
+      sections: catalogState.sections,
+      catalog: catalogState.catalog,
+      canonicalUnlockedKeys: permissionState.unlockedKeys,
+      contentByMode: contentState.interpretation == null
+          ? const {}
+          : {contentState.mode: contentState.interpretation!},
+      isLoadingChart: contentState.isLoadingChart,
+      isLoadingSections: catalogState.isLoading,
+      isLoadingUnlocks: permissionState.isLoading,
+      isLoadingInterpretation: contentState.isLoadingContent,
+      isSavingChart: contentState.isSavingChart,
+      unlockStatusBySection: permissionState.statusBySection,
+      chartError: contentState.chartError,
+      catalogError: catalogState.error,
+      permissionError: permissionState.permissionError,
+      contentError: contentState.contentError,
+      unlockError: permissionState.unlockError,
+    );
     final controller = ref.read(interpretationControllerProvider.notifier);
     final balance = ref.watch(
       authControllerProvider.select(
@@ -33,7 +63,7 @@ class InterpretationPage extends ConsumerWidget {
     );
     final chart = state.context;
     final lockedSections = state.sections
-        .where(controller.canPurchase)
+        .where(permissionState.canPurchase)
         .toList(growable: false);
     final calculatedUnlockCost = lockedSections.fold<int>(
       0,
@@ -43,23 +73,12 @@ class InterpretationPage extends ConsumerWidget {
     final totalUnlockCost = backendBundleCost > 0
         ? backendBundleCost
         : calculatedUnlockCost;
-
     return Scaffold(
       backgroundColor: const Color(0xFF06141F),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            MysticAssets.homeBackground,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            cacheWidth:
-                (MediaQuery.sizeOf(context).width *
-                        MediaQuery.devicePixelRatioOf(context))
-                    .round(),
-            filterQuality: FilterQuality.medium,
-          ),
-          const ColoredBox(color: Color(0xB0030A12)),
+          const _InterpretationBackground(),
           SafeArea(
             child: chart == null
                 ? _MissingChart(onBack: () => context.go(AppRoute.horoscope))
@@ -145,7 +164,7 @@ class InterpretationPage extends ConsumerWidget {
                               else
                                 _TabContent(
                                   state: state,
-                                  isUnlocked: controller.isUnlocked,
+                                  isUnlocked: permissionState.isUnlocked,
                                   onUnlock: (section) =>
                                       _confirmUnlock(context, ref, section),
                                   onUnlockGroup: (sections) =>
@@ -424,6 +443,30 @@ class InterpretationPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _InterpretationBackground extends StatelessWidget {
+  const _InterpretationBackground();
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          MysticAssets.homeBackground,
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+          cacheWidth:
+              (MediaQuery.sizeOf(context).width *
+                      MediaQuery.devicePixelRatioOf(context))
+                  .round(),
+          filterQuality: FilterQuality.medium,
+        ),
+        const ColoredBox(color: Color(0xB0030A12)),
+      ],
+    ),
+  );
 }
 
 class _TabContent extends StatelessWidget {

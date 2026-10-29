@@ -191,15 +191,18 @@ class InterpretationChartContext {
 
   bool get isSaved => chartId != null && chartId!.trim().isNotEmpty;
 
-  InterpretationChartContext copyWith({String? chartId}) =>
-      InterpretationChartContext(
-        name: name,
-        chartId: chartId ?? this.chartId,
-        chartData: chartData,
-        request: request,
-        generatedResult: generatedResult,
-        savedSummary: savedSummary,
-      );
+  InterpretationChartContext copyWith({
+    String? chartId,
+    Map<String, dynamic>? chartData,
+    SavedChart? savedSummary,
+  }) => InterpretationChartContext(
+    name: name,
+    chartId: chartId ?? this.chartId,
+    chartData: chartData ?? this.chartData,
+    request: request,
+    generatedResult: generatedResult,
+    savedSummary: savedSummary ?? this.savedSummary,
+  );
 }
 
 class ReadingSection {

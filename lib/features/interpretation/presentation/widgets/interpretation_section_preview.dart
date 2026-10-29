@@ -5,6 +5,9 @@ import '../../domain/interpretation_models.dart';
 import '../../domain/interpretation_section_content_resolver.dart';
 import '../../domain/section_content.dart';
 import '../controllers/interpretation_controller.dart';
+import '../providers/interpretation_catalog_provider.dart';
+import '../providers/interpretation_content_provider.dart';
+import '../providers/reading_permission_provider.dart';
 import '../providers/topic_interpretation_provider.dart';
 import 'rich_interpretation_text.dart';
 
@@ -53,26 +56,28 @@ class _SectionPreviewSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(interpretationControllerProvider);
+    final catalog = ref.watch(interpretationCatalogProvider);
+    final contentState = ref.watch(interpretationContentProvider);
+    final permission = ref.watch(readingPermissionProvider);
     final controller = ref.read(interpretationControllerProvider.notifier);
-    final liveSection = state.sections.cast<ReadingSection?>().firstWhere(
+    final liveSection = catalog.sections.cast<ReadingSection?>().firstWhere(
       (item) =>
           item?.groupSlug == section.groupSlug &&
           item?.sectionSlug == section.sectionSlug,
       orElse: () => null,
     );
     final activeSection = liveSection ?? section;
-    final interpretation = state.interpretation;
+    final interpretation = contentState.interpretation;
     final activeContent = interpretation == null
         ? content
         : const InterpretationSectionContentResolver().resolve(
             section: activeSection,
             interpretation: interpretation,
-            chartData: state.context?.chartData ?? const {},
+            chartData: contentState.context?.chartData ?? const {},
           );
     final activeUnlocked = liveSection == null
         ? isUnlocked
-        : controller.isUnlocked(activeSection);
+        : permission.isUnlocked(activeSection);
     final text = activeUnlocked
         ? activeContent.displayContent
         : activeContent.preview;
@@ -156,8 +161,8 @@ class _SectionPreviewSheet extends ConsumerWidget {
               ),
               const Divider(color: Color(0x66996A28), height: 1),
               _ReadingModeSwitch(
-                mode: state.mode,
-                isLoading: state.isLoadingInterpretation,
+                mode: contentState.mode,
+                isLoading: contentState.isLoadingContent,
                 onChanged: controller.changeMode,
               ),
               if (isSharedContent)
@@ -185,8 +190,8 @@ class _SectionPreviewSheet extends ConsumerWidget {
                   controller: scrollController,
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
                   children: [
-                    if (state.isLoadingInterpretation &&
-                        state.interpretation == null)
+                    if (contentState.isLoadingContent &&
+                        contentState.interpretation == null)
                       const _ContentLoading()
                     else if (activeUnlocked && topic?.trim().isNotEmpty == true)
                       _TopicContent(topic: topic!.trim())
