@@ -214,6 +214,10 @@ class ReadingSection {
     required this.iconName,
     required this.coinCost,
     required this.order,
+    this.topicCode = '',
+    this.aliases = const [],
+    this.isUnlocked = false,
+    this.hasUnlockState = false,
     this.isPublicOverview = false,
   });
 
@@ -227,6 +231,10 @@ class ReadingSection {
   final String iconName;
   final int coinCost;
   final int order;
+  final String topicCode;
+  final List<String> aliases;
+  final bool isUnlocked;
+  final bool hasUnlockState;
   final bool isPublicOverview;
 
   bool get isFree => coinCost <= 0;
@@ -242,9 +250,168 @@ class ReadingSection {
     iconName: _text(json['iconName'] ?? json['icon_name']),
     coinCost: _integer(json['coinCost'] ?? json['coin_cost']),
     order: _integer(json['order']),
+    topicCode: _text(json['topicCode'] ?? json['topic_code']),
+    aliases: (json['aliases'] is List)
+        ? List.unmodifiable(
+            (json['aliases'] as List)
+                .map((value) => value.toString().trim())
+                .where((value) => value.isNotEmpty),
+          )
+        : const [],
+    isUnlocked: json['isUnlocked'] == true || json['is_unlocked'] == true,
+    hasUnlockState:
+        json.containsKey('isUnlocked') || json.containsKey('is_unlocked'),
     isPublicOverview:
         json['isPublicOverview'] == true || json['is_public_overview'] == true,
   );
+}
+
+class ReadingPricing {
+  const ReadingPricing({
+    this.unitCost = 0,
+    this.bundleMaxCost = 0,
+    this.fullBundleDiscountPercent = 0,
+    this.tabBundleDiscountPercent = 0,
+    this.saveChartCost = 0,
+    this.totalSections = 0,
+    this.unlockedCount = 0,
+    this.remainingLockedCount = 0,
+    this.remainingBundleCost = 0,
+    this.buyOneGetBothModes = false,
+  });
+
+  final int unitCost;
+  final int bundleMaxCost;
+  final int fullBundleDiscountPercent;
+  final int tabBundleDiscountPercent;
+  final int saveChartCost;
+  final int totalSections;
+  final int unlockedCount;
+  final int remainingLockedCount;
+  final int remainingBundleCost;
+  final bool buyOneGetBothModes;
+
+  factory ReadingPricing.fromJson(Map<String, dynamic> json) => ReadingPricing(
+    unitCost: _integer(json['unitCost'] ?? json['unit_cost']),
+    bundleMaxCost: _integer(json['bundleMaxCost'] ?? json['bundle_max_cost']),
+    fullBundleDiscountPercent: _integer(
+      json['fullBundleDiscountPercent'] ?? json['full_bundle_discount_percent'],
+    ),
+    tabBundleDiscountPercent: _integer(
+      json['tabBundleDiscountPercent'] ?? json['tab_bundle_discount_percent'],
+    ),
+    saveChartCost: _integer(json['saveChartCost'] ?? json['save_chart_cost']),
+    totalSections: _integer(json['totalSections'] ?? json['total_sections']),
+    unlockedCount: _integer(json['unlockedCount'] ?? json['unlocked_count']),
+    remainingLockedCount: _integer(
+      json['remainingLockedCount'] ?? json['remaining_locked_count'],
+    ),
+    remainingBundleCost: _integer(
+      json['remainingBundleCost'] ?? json['remaining_bundle_cost'],
+    ),
+    buyOneGetBothModes:
+        json['buyOneGetBothModes'] == true ||
+        json['buy_one_get_both_modes'] == true,
+  );
+}
+
+class ReadingGroup {
+  const ReadingGroup({
+    required this.groupSlug,
+    required this.groupTitle,
+    required this.sections,
+    this.totalSections = 0,
+    this.lockedCount = 0,
+    this.tabBundleDiscountPercent = 0,
+    this.tabBundleCost = 0,
+  });
+
+  final String groupSlug;
+  final String groupTitle;
+  final List<ReadingSection> sections;
+  final int totalSections;
+  final int lockedCount;
+  final int tabBundleDiscountPercent;
+  final int tabBundleCost;
+
+  factory ReadingGroup.fromJson(Map<String, dynamic> json) {
+    final sections = (json['sections'] is List)
+        ? (json['sections'] as List)
+              .whereType<Map>()
+              .map(
+                (item) => ReadingSection.fromJson({
+                  ...Map<String, dynamic>.from(item),
+                  'groupSlug': item['groupSlug'] ?? json['groupSlug'],
+                  'groupTitle': item['groupTitle'] ?? json['groupTitle'],
+                }),
+              )
+              .toList(growable: false)
+        : const <ReadingSection>[];
+    return ReadingGroup(
+      groupSlug: _text(json['groupSlug'] ?? json['group_slug']),
+      groupTitle: _text(json['groupTitle'] ?? json['group_title']),
+      sections: List.unmodifiable(sections),
+      totalSections: _integer(json['totalSections'] ?? json['total_sections']),
+      lockedCount: _integer(json['lockedCount'] ?? json['locked_count']),
+      tabBundleDiscountPercent: _integer(
+        json['tabBundleDiscountPercent'] ?? json['tab_bundle_discount_percent'],
+      ),
+      tabBundleCost: _integer(json['tabBundleCost'] ?? json['tab_bundle_cost']),
+    );
+  }
+}
+
+class ReadingCatalog {
+  const ReadingCatalog({
+    required this.sections,
+    this.groups = const [],
+    this.pricing = const ReadingPricing(),
+    this.allUnlocked = false,
+  });
+
+  final List<ReadingSection> sections;
+  final List<ReadingGroup> groups;
+  final ReadingPricing pricing;
+  final bool allUnlocked;
+
+  factory ReadingCatalog.fromJson(Map<String, dynamic> json) {
+    final groups = (json['groups'] is List)
+        ? (json['groups'] as List)
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    ReadingGroup.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList(growable: false)
+        : const <ReadingGroup>[];
+    final flat = (json['readingSections'] ?? json['reading_sections']);
+    final flatSections = flat is List
+        ? flat
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    ReadingSection.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList(growable: false)
+        : const <ReadingSection>[];
+    final sections = flatSections.isNotEmpty
+        ? flatSections
+        : groups.expand((group) => group.sections).toList(growable: false);
+    sections.sort((left, right) {
+      final group = left.groupSlug.compareTo(right.groupSlug);
+      return group != 0 ? group : left.order.compareTo(right.order);
+    });
+    return ReadingCatalog(
+      sections: List.unmodifiable(sections),
+      groups: List.unmodifiable(groups),
+      pricing: json['pricing'] is Map
+          ? ReadingPricing.fromJson(
+              Map<String, dynamic>.from(json['pricing'] as Map),
+            )
+          : const ReadingPricing(),
+      allUnlocked: json['allUnlocked'] == true || json['all_unlocked'] == true,
+    );
+  }
 }
 
 class PalaceInterpretation {
@@ -302,6 +469,8 @@ class StructuredReadingSection {
   const StructuredReadingSection({
     required this.id,
     required this.title,
+    this.sectionSlug = '',
+    this.topicCode = '',
     this.summary = '',
     this.items = const [],
     this.isUnlocked = false,
@@ -309,6 +478,8 @@ class StructuredReadingSection {
 
   final String id;
   final String title;
+  final String sectionSlug;
+  final String topicCode;
   final String summary;
   final List<ReadingContentItem> items;
   final bool isUnlocked;
@@ -321,7 +492,13 @@ class StructuredReadingSection {
         if (item.content.trim().isNotEmpty) item.content.trim(),
       ],
     ];
-    return parts.join('\n\n');
+    final seen = <String>{};
+    final unique = <String>[];
+    for (final part in parts) {
+      final key = part.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+      if (key.isNotEmpty && seen.add(key)) unique.add(part);
+    }
+    return unique.join('\n\n');
   }
 
   factory StructuredReadingSection.fromJson(Map<String, dynamic> json) =>
@@ -332,6 +509,14 @@ class StructuredReadingSection {
         title: _text(
           json['title'] ?? json['name'] ?? json['palaceName'] ?? json['palace'],
         ),
+        sectionSlug: _text(
+          json['sectionSlug'] ??
+              json['section_slug'] ??
+              json['slug'] ??
+              json['palaceSlug'] ??
+              json['palace_slug'],
+        ),
+        topicCode: _text(json['topicCode'] ?? json['topic_code']),
         summary: _text(json['summary']),
         items: _parseReadingItems(json['items']),
         isUnlocked: json['isUnlocked'] == true || json['is_unlocked'] == true,
@@ -400,7 +585,11 @@ class InterpretationData {
   final Map<String, ContentSource> fieldSources;
 
   List<StructuredReadingSection> get overviewSections =>
-      _parseStructuredSections(_interpretationSource(rawData)['overview']);
+      _parseStructuredSections(
+        _interpretationSource(rawData)['overviewTopics'] ??
+            _interpretationSource(rawData)['overview_topics'] ??
+            _interpretationSource(rawData)['overview'],
+      );
 
   List<StructuredReadingSection> get palaceReadingSections =>
       _parseStructuredSections(
@@ -409,10 +598,24 @@ class InterpretationData {
       );
 
   List<StructuredReadingSection> get guidanceSections =>
-      _parseStructuredSections(_interpretationSource(rawData)['guidance']);
+      _parseStructuredSections(
+        _interpretationSource(rawData)['fengShuiAndGuidance'] ??
+            _interpretationSource(rawData)['feng_shui_and_guidance'] ??
+            _interpretationSource(rawData)['guidance'],
+      );
 
-  TimingReading get timing =>
-      TimingReading.fromJson(_interpretationSource(rawData)['timing']);
+  List<StructuredReadingSection> get timingReadingSections =>
+      _parseStructuredSections(
+        _interpretationSource(rawData)['timingReadings'] ??
+            _interpretationSource(rawData)['timing_readings'] ??
+            _interpretationSource(rawData)['timing'],
+      );
+
+  TimingReading get timing => TimingReading.fromJson(
+    _interpretationSource(rawData)['timingReadings'] ??
+        _interpretationSource(rawData)['timing_readings'] ??
+        _interpretationSource(rawData)['timing'],
+  );
 
   ContentSource sourceFor(String field) =>
       fieldSources[field] ?? ContentSource.unavailable;
@@ -450,6 +653,7 @@ class InterpretationData {
       overviewSections.isEmpty &&
       palaceReadingSections.isEmpty &&
       guidanceSections.isEmpty &&
+      timingReadingSections.isEmpty &&
       timing.isEmpty;
 
   InterpretationData mergeDetailed(InterpretationData other) {
@@ -766,9 +970,22 @@ List<ReadingContentItem> _parseReadingItems(Object? value) {
 }
 
 List<StructuredReadingSection> _parseStructuredSections(Object? value) {
-  if (value is! List) return const [];
+  final values = value is List
+      ? value
+      : value is Map
+      ? value.entries
+            .where((entry) => entry.value is Map)
+            .map(
+              (entry) => <String, dynamic>{
+                ...Map<String, dynamic>.from(entry.value as Map),
+                'sectionSlug':
+                    (entry.value as Map)['sectionSlug'] ?? entry.key.toString(),
+              },
+            )
+            .toList(growable: false)
+      : const <Object?>[];
   return List.unmodifiable(
-    value
+    values
         .whereType<Map>()
         .map(
           (item) => StructuredReadingSection.fromJson(

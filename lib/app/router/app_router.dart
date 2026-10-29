@@ -21,6 +21,7 @@ import '../../features/profile/presentation/account_settings_page.dart';
 import '../../features/wallet/presentation/wallet_page.dart';
 import '../../features/wallet/presentation/coin_packages_page.dart';
 import '../../features/wallet/presentation/coin_transactions_page.dart';
+import '../../features/wallet/presentation/payment_orders_page.dart';
 import 'app_shell.dart';
 
 abstract final class AppRoute {
@@ -35,6 +36,7 @@ abstract final class AppRoute {
   static const wallet = '/wallet';
   static const coinPackages = '/wallet/packages';
   static const coinTransactions = '/wallet/transactions';
+  static const paymentOrders = '/wallet/orders';
   static const profile = '/profile';
   static const personalProfile = '/profile/personal';
   static const editProfile = '/profile/personal/edit';
@@ -130,6 +132,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'transactions',
                     builder: (_, _) => const CoinTransactionsPage(),
+                  ),
+                  GoRoute(
+                    path: 'orders',
+                    builder: (_, _) => const PaymentOrdersPage(),
                   ),
                 ],
               ),

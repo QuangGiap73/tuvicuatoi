@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/interpretation_models.dart';
 import '../../domain/section_content.dart';
 import '../providers/topic_interpretation_provider.dart';
+import 'rich_interpretation_text.dart';
 
 Future<void> showInterpretationSectionPreview(
   BuildContext context, {
@@ -85,23 +86,39 @@ class _SectionPreviewSheet extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (section.groupTitle.trim().isNotEmpty) ...[
+                            Text(
+                              section.groupTitle.toUpperCase(),
+                              style: const TextStyle(
+                                color: Color(0xFF9A681F),
+                                fontSize: 9.5,
+                                letterSpacing: 1.35,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
                           Text(
                             section.title,
                             style: const TextStyle(
                               color: Color(0xFF4D2D13),
                               fontFamily: 'serif',
-                              fontSize: 19,
+                              fontSize: 21,
+                              height: 1.15,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          if (section.subtitle.trim().isNotEmpty)
+                          if (section.subtitle.trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
                             Text(
                               section.subtitle,
                               style: const TextStyle(
                                 color: Color(0xFF806445),
-                                fontSize: 11,
+                                fontSize: 11.5,
+                                height: 1.3,
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ),
@@ -149,17 +166,12 @@ class _SectionPreviewSheet extends StatelessWidget {
                     else
                       Stack(
                         children: [
-                          Text(
-                            text,
+                          RichInterpretationText(
+                            text: text,
                             maxLines: isUnlocked ? null : 6,
                             overflow: isUnlocked
                                 ? TextOverflow.visible
                                 : TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF493B2B),
-                              fontSize: 13.5,
-                              height: 1.55,
-                            ),
                           ),
                           if (!isUnlocked)
                             Positioned(
@@ -337,14 +349,7 @@ class _TopicContent extends ConsumerWidget {
             ],
             const SizedBox(height: 10),
             for (var index = 0; index < paragraphs.length; index++) ...[
-              SelectableText(
-                paragraphs[index],
-                style: const TextStyle(
-                  color: Color(0xFF493B2B),
-                  fontSize: 13.5,
-                  height: 1.58,
-                ),
-              ),
+              RichInterpretationText(text: paragraphs[index]),
               if (index != paragraphs.length - 1) const SizedBox(height: 13),
             ],
           ],

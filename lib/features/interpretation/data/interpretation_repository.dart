@@ -57,6 +57,33 @@ class InterpretationRepository {
     }
   }
 
+  Future<ReadingCatalog> getCatalog({
+    String? chartId,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/charts/reading-sections/',
+        queryParameters: chartId == null || chartId.trim().isEmpty
+            ? null
+            : {'chartId': chartId},
+        cancelToken: cancelToken,
+      );
+      final body = response.data;
+      if (body is! Map || body['success'] != true) {
+        throw const InterpretationException('Danh mục luận giải không hợp lệ.');
+      }
+      final catalog = ReadingCatalog.fromJson(Map<String, dynamic>.from(body));
+      if (catalog.sections.isEmpty) {
+        throw const InterpretationException('Danh mục luận giải đang trống.');
+      }
+      return catalog;
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) rethrow;
+      throw _exception(error);
+    }
+  }
+
   Future<List<ReadingSection>> getSections({CancelToken? cancelToken}) async {
     try {
       final response = await _dio.get<Object?>(
@@ -182,6 +209,7 @@ class InterpretationRepository {
         data: {
           'chartId': chartId,
           'interpretationMode': mode.apiValue,
+          'scope': 'single',
           'groupSlug': section.groupSlug,
           'sectionSlug': section.sectionSlug,
           if (voucherCode != null && voucherCode.trim().isNotEmpty)
@@ -207,6 +235,7 @@ class InterpretationRepository {
     required String chartId,
     required InterpretationMode mode,
     required List<ReadingSection> sections,
+    String scope = 'bundle',
     String? voucherCode,
     CancelToken? cancelToken,
   }) async {
@@ -219,6 +248,10 @@ class InterpretationRepository {
         data: {
           'chartId': chartId,
           'interpretationMode': mode.apiValue,
+          'scope': scope,
+          if (scope == 'all') 'unlockAll': true,
+          if (scope == 'tab' && sections.isNotEmpty)
+            'groupSlug': sections.first.groupSlug,
           'sections': sections
               .map(
                 (section) => {

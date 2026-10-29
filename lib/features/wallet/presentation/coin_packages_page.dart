@@ -7,7 +7,10 @@ import '../../../core/widgets/mystic_scaffold.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../domain/wallet_models.dart';
 import 'providers/top_up_providers.dart';
+import 'providers/payment_order_providers.dart';
 import 'state/top_up_state.dart';
+import 'widgets/payment_checkout_dialog.dart';
+import 'widgets/payment_status_dialog.dart';
 import 'widgets/top_up_header.dart';
 import 'widgets/top_up_tabs.dart';
 
@@ -367,6 +370,8 @@ class _CoinPackageCard extends ConsumerWidget {
                             ref,
                             productId: package.id,
                             productType: 'COIN',
+                            productName: package.name,
+                            amount: package.price,
                           ),
                   ),
                 ),
@@ -517,6 +522,8 @@ class _MembershipCard extends ConsumerWidget {
                         ref,
                         productId: package.id,
                         productType: 'PREMIUM',
+                        productName: package.name,
+                        amount: package.price,
                       ),
               ),
             ),
@@ -708,10 +715,26 @@ Future<void> _createOrder(
   WidgetRef ref, {
   required String productId,
   required String productType,
+  required String productName,
+  required double amount,
 }) async {
+  final checkout = await showPaymentCheckoutDialog(
+    context: context,
+    productName: productName,
+    amount: amount,
+    featureKey: productType == 'COIN' ? 'COIN_PACKAGE' : 'PREMIUM_PACKAGE',
+    onValidateVoucher: ref
+        .read(topUpControllerProvider.notifier)
+        .validateVoucher,
+  );
+  if (checkout == null || !context.mounted) return;
   final result = await ref
       .read(topUpControllerProvider.notifier)
-      .createOrder(productId: productId, productType: productType);
+      .createOrder(
+        productId: productId,
+        productType: productType,
+        voucherCode: checkout.voucherCode,
+      );
   if (!context.mounted) return;
   if (result == null) {
     final error = ref.read(topUpControllerProvider).error;
@@ -723,8 +746,10 @@ Future<void> _createOrder(
     return;
   }
   final uri = Uri.tryParse(result.checkoutUrl);
+  ref.read(paymentOrderControllerProvider.notifier).track(result);
   if (uri == null ||
       !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    ref.read(paymentOrderControllerProvider.notifier).clear();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Không thể mở trang thanh toán PayOS.')),
@@ -732,15 +757,7 @@ Future<void> _createOrder(
     }
     return;
   }
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Đơn thanh toán đã được tạo. Xu sẽ được cộng sau khi backend xác nhận thanh toán.',
-        ),
-      ),
-    );
-  }
+  if (context.mounted) await showPaymentStatusDialog(context);
 }
 
 String _money(double value) => '${_number(value.round())}đ';

@@ -24,6 +24,21 @@ class InterpretationSectionContentResolver {
     required InterpretationData interpretation,
     required Map<String, dynamic> chartData,
   }) {
+    final canonical = _canonicalSection(section, interpretation);
+    if (canonical != null && canonical.fullText.trim().isNotEmpty) {
+      final fullText = canonical.fullText.trim();
+      return SectionContent(
+        preview: _firstText([
+          canonical.summary,
+          section.summary,
+          section.subtitle,
+          fullText,
+        ]),
+        fullContent: fullText,
+        source: ContentSource.generatedInterpretation,
+        isFallback: false,
+      );
+    }
     final resolved = switch (section.sectionSlug) {
       'ban_menh_va_than' =>
         _fromInterpretation(
@@ -85,6 +100,64 @@ class InterpretationSectionContentResolver {
       );
     }
     return _catalogFallback(section);
+  }
+
+  static StructuredReadingSection? _canonicalSection(
+    ReadingSection section,
+    InterpretationData interpretation,
+  ) {
+    final wanted = <String>{
+      section.sectionSlug,
+      section.topicCode,
+      ...section.aliases,
+    }.where((value) => value.trim().isNotEmpty).map(_canonicalKey).toSet();
+    final candidates = <StructuredReadingSection>[
+      ...interpretation.overviewSections,
+      ...interpretation.palaceReadingSections,
+      ...interpretation.timingReadingSections,
+      ...interpretation.guidanceSections,
+    ];
+    for (final candidate in candidates) {
+      final keys = <String>{
+        candidate.id,
+        candidate.sectionSlug,
+        candidate.topicCode,
+        if (candidate.title.trim().isNotEmpty) 'cung_${candidate.title}',
+      }.where((value) => value.trim().isNotEmpty).map(_canonicalKey);
+      if (keys.any(
+        (key) => wanted.any(
+          (expected) =>
+              key == expected ||
+              (RegExp(r'^cd\d+$').hasMatch(expected) &&
+                  key.startsWith(expected)),
+        ),
+      )) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  static String _canonicalKey(String value) {
+    var normalized = value.toLowerCase();
+    const accents = <String, String>{
+      'a': 'áàảãạăắằẳẵặâấầẩẫậ',
+      'e': 'éèẻẽẹêếềểễệ',
+      'i': 'íìỉĩị',
+      'o': 'óòỏõọôốồổỗộơớờởỡợ',
+      'u': 'úùủũụưứừửữự',
+      'y': 'ýỳỷỹỵ',
+      'd': 'đ',
+    };
+    for (final entry in accents.entries) {
+      for (final rune in entry.value.runes) {
+        normalized = normalized.replaceAll(
+          String.fromCharCode(rune),
+          entry.key,
+        );
+      }
+    }
+    return normalized.replaceAll(RegExp(r'[^a-z0-9]+'), '');
   }
 
   _Resolved? _palace({

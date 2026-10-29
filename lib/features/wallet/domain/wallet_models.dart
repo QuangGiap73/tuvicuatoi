@@ -255,11 +255,141 @@ class MembershipPackage {
 }
 
 class PaymentOrderResult {
-  const PaymentOrderResult({required this.checkoutUrl, required this.orderId});
+  const PaymentOrderResult({
+    required this.checkoutUrl,
+    required this.orderId,
+    required this.order,
+    this.qrCode = '',
+  });
   final String checkoutUrl;
   final String orderId;
+  final PaymentOrder order;
+  final String qrCode;
+}
+
+class PaymentOrder {
+  const PaymentOrder({
+    required this.id,
+    required this.orderCode,
+    required this.productType,
+    required this.productName,
+    required this.amount,
+    required this.status,
+    this.coinsGranted = 0,
+    this.coinBalance,
+    this.method = '',
+    this.createdAt,
+    this.paidAt,
+    this.expiresAt,
+  });
+
+  final String id;
+  final String orderCode;
+  final String productType;
+  final String productName;
+  final double amount;
+  final String status;
+  final int coinsGranted;
+  final int? coinBalance;
+  final String method;
+  final DateTime? createdAt;
+  final DateTime? paidAt;
+  final DateTime? expiresAt;
+
+  String get normalizedStatus => status.trim().toUpperCase();
+  bool get isSuccess =>
+      const {'SUCCESS', 'COMPLETED', 'PAID'}.contains(normalizedStatus);
+  bool get isPending =>
+      const {'PENDING', 'PROCESSING', 'WAITING'}.contains(normalizedStatus);
+  bool get isTerminal =>
+      isSuccess ||
+      const {
+        'FAILED',
+        'CANCELLED',
+        'CANCELED',
+        'EXPIRED',
+      }.contains(normalizedStatus);
+
+  factory PaymentOrder.fromJson(Map<String, dynamic> json) => PaymentOrder(
+    id: json['id']?.toString() ?? '',
+    orderCode:
+        json['orderCode']?.toString() ??
+        json['providerOrderCode']?.toString() ??
+        '',
+    productType: json['productType']?.toString() ?? '',
+    productName:
+        json['productName']?.toString() ?? json['planName']?.toString() ?? '',
+    amount: _double(json['amount']),
+    status: json['statusRaw']?.toString() ?? json['status']?.toString() ?? '',
+    coinsGranted: (json['coinsGranted'] as num?)?.toInt() ?? 0,
+    coinBalance: (json['coinBalance'] as num?)?.toInt(),
+    method: json['method']?.toString() ?? '',
+    createdAt: _date(json['createdAt']),
+    paidAt: _date(json['paidAt']),
+    expiresAt: _date(json['expiresAt']),
+  );
+}
+
+class VoucherValidationResult {
+  const VoucherValidationResult({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.discountType,
+    required this.discountValue,
+    required this.discountAmount,
+    required this.finalCost,
+    required this.message,
+  });
+
+  final String id;
+  final String code;
+  final String name;
+  final String discountType;
+  final double discountValue;
+  final double discountAmount;
+  final double finalCost;
+  final String message;
+
+  factory VoucherValidationResult.fromJson(Map<String, dynamic> json) =>
+      VoucherValidationResult(
+        id: json['id']?.toString() ?? '',
+        code: json['code']?.toString() ?? '',
+        name: json['name']?.toString() ?? '',
+        discountType: json['discountType']?.toString() ?? '',
+        discountValue: _double(json['discountValue']),
+        discountAmount: _double(
+          json['discountAmount'] ??
+              json['discountCoins'] ??
+              json['discountValueApplied'],
+        ),
+        finalCost: _double(json['finalCost']),
+        message: json['message']?.toString() ?? '',
+      );
 }
 
 List<Map<String, dynamic>> _maps(Object? value) => value is List
     ? value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
     : const [];
+
+double _double(Object? value) => value is num
+    ? value.toDouble()
+    : double.tryParse(value?.toString() ?? '') ?? 0;
+
+DateTime? _date(Object? value) {
+  final text = value?.toString().trim() ?? '';
+  if (text.isEmpty) return null;
+  final iso = DateTime.tryParse(text);
+  if (iso != null) return iso;
+  final match = RegExp(
+    r'^(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$',
+  ).firstMatch(text);
+  if (match == null) return null;
+  return DateTime(
+    int.parse(match.group(3)!),
+    int.parse(match.group(2)!),
+    int.parse(match.group(1)!),
+    int.tryParse(match.group(4) ?? '') ?? 0,
+    int.tryParse(match.group(5) ?? '') ?? 0,
+  );
+}

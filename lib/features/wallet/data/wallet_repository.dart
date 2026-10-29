@@ -7,6 +7,9 @@ import '../domain/wallet_models.dart';
 class WalletException implements Exception {
   const WalletException(this.message);
   final String message;
+
+  @override
+  String toString() => message;
 }
 
 class WalletRepository {
@@ -65,11 +68,14 @@ class WalletRepository {
   Future<PaymentOrderResult> createOrder({
     required String productId,
     required String productType,
+    String? voucherCode,
     CancelToken? cancelToken,
   }) async {
     final body = await _post('/monetization/create-order/', {
       'productId': productId,
       'productType': productType,
+      if (voucherCode != null && voucherCode.trim().isNotEmpty)
+        'voucherCode': voucherCode.trim(),
     }, cancelToken);
     final order = body['order'] is Map
         ? Map<String, dynamic>.from(body['order'] as Map)
@@ -81,7 +87,69 @@ class WalletRepository {
     return PaymentOrderResult(
       checkoutUrl: checkoutUrl,
       orderId: order['id']?.toString() ?? '',
+      order: PaymentOrder.fromJson(order),
+      qrCode: body['qrCode']?.toString() ?? '',
     );
+  }
+
+  Future<PaymentOrder> getOrder({
+    required String orderId,
+    CancelToken? cancelToken,
+  }) async {
+    final body = await _get('/monetization/orders/$orderId/', cancelToken);
+    final raw = body['order'];
+    if (raw is! Map) {
+      throw const WalletException('Máy chủ chưa trả về trạng thái đơn hàng.');
+    }
+    final user = body['user'] is Map
+        ? Map<String, dynamic>.from(body['user'] as Map)
+        : const <String, dynamic>{};
+    return PaymentOrder.fromJson({
+      ...Map<String, dynamic>.from(raw),
+      if (raw['coinBalance'] == null && user['coinBalance'] != null)
+        'coinBalance': user['coinBalance'],
+    });
+  }
+
+  Future<List<PaymentOrder>> getMyOrders({CancelToken? cancelToken}) async {
+    final body = await _get('/monetization/my-orders/', cancelToken);
+    final orders =
+        _maps(body['orders'])
+            .map(PaymentOrder.fromJson)
+            .where((order) => order.id.isNotEmpty)
+            .toList(growable: false)
+          ..sort((left, right) {
+            final leftDate =
+                left.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final rightDate =
+                right.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return rightDate.compareTo(leftDate);
+          });
+    return List.unmodifiable(orders);
+  }
+
+  Future<VoucherValidationResult> validateVoucher({
+    required String code,
+    required String featureKey,
+    required double originalCost,
+    CancelToken? cancelToken,
+  }) async {
+    final body = await _post('/monetization/vouchers/validate/', {
+      'code': code.trim(),
+      'featureKey': featureKey,
+      'originalCost': originalCost.round(),
+    }, cancelToken);
+    final raw = body['voucher'];
+    if (raw is! Map) {
+      throw const WalletException('Máy chủ chưa trả về thông tin voucher.');
+    }
+    final result = VoucherValidationResult.fromJson(
+      Map<String, dynamic>.from(raw),
+    );
+    if (result.code.isEmpty) {
+      throw const WalletException('Thông tin voucher không hợp lệ.');
+    }
+    return result;
   }
 
   Future<Map<String, dynamic>> checkIn({CancelToken? cancelToken}) =>
@@ -161,8 +229,12 @@ class WalletRepository {
 
   static String? _message(Object? value) {
     if (value is Map) {
+      final error = value['error'];
+      if (error is Map && error['message'] != null) {
+        return error['message'].toString();
+      }
       return value['message']?.toString() ??
-          value['error']?.toString() ??
+          error?.toString() ??
           value['detail']?.toString();
     }
     return null;

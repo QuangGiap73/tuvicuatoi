@@ -8,12 +8,14 @@ import '../state/top_up_state.dart';
 class TopUpController extends Notifier<TopUpState> {
   CancelToken? _loadToken;
   CancelToken? _orderToken;
+  CancelToken? _voucherToken;
 
   @override
   TopUpState build() {
     ref.onDispose(() {
       _loadToken?.cancel();
       _orderToken?.cancel();
+      _voucherToken?.cancel();
     });
     Future.microtask(load);
     return const TopUpState(isLoading: true);
@@ -56,6 +58,7 @@ class TopUpController extends Notifier<TopUpState> {
   Future<PaymentOrderResult?> createOrder({
     required String productId,
     required String productType,
+    String? voucherCode,
   }) async {
     if (state.creatingProductId != null) return null;
     _orderToken?.cancel();
@@ -68,6 +71,7 @@ class TopUpController extends Notifier<TopUpState> {
           .createOrder(
             productId: productId,
             productType: productType,
+            voucherCode: voucherCode,
             cancelToken: token,
           );
     } on DioException catch (error) {
@@ -80,5 +84,23 @@ class TopUpController extends Notifier<TopUpState> {
     } finally {
       if (!token.isCancelled) state = state.copyWith(clearCreating: true);
     }
+  }
+
+  Future<VoucherValidationResult> validateVoucher({
+    required String code,
+    required String featureKey,
+    required double originalCost,
+  }) async {
+    _voucherToken?.cancel('Kiểm tra mã voucher mới');
+    final token = CancelToken();
+    _voucherToken = token;
+    return ref
+        .read(walletRepositoryProvider)
+        .validateVoucher(
+          code: code,
+          featureKey: featureKey,
+          originalCost: originalCost,
+          cancelToken: token,
+        );
   }
 }

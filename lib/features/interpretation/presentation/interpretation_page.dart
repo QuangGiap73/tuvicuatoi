@@ -10,7 +10,6 @@ import '../../auth/presentation/controllers/auth_controller.dart';
 import '../domain/generated_overview_section_mapper.dart';
 import '../domain/interpretation_models.dart';
 import '../domain/interpretation_section_content_resolver.dart';
-import '../domain/interpretation_topic_mapper.dart';
 import '../domain/section_content.dart';
 import 'controllers/interpretation_controller.dart';
 import 'state/interpretation_state.dart';
@@ -36,10 +35,14 @@ class InterpretationPage extends ConsumerWidget {
     final lockedSections = state.sections
         .where(controller.canPurchase)
         .toList(growable: false);
-    final totalUnlockCost = lockedSections.fold<int>(
+    final calculatedUnlockCost = lockedSections.fold<int>(
       0,
       (total, section) => total + section.coinCost,
     );
+    final backendBundleCost = state.catalog?.pricing.remainingBundleCost ?? 0;
+    final totalUnlockCost = backendBundleCost > 0
+        ? backendBundleCost
+        : calculatedUnlockCost;
 
     return Scaffold(
       backgroundColor: const Color(0xFF06141F),
@@ -150,11 +153,7 @@ class InterpretationPage extends ConsumerWidget {
                                         context,
                                         ref,
                                         sections,
-                                        sections.fold<int>(
-                                          0,
-                                          (total, section) =>
-                                              total + section.coinCost,
-                                        ),
+                                        _tabBundleCost(state, sections),
                                         balance,
                                       ),
                                   onSelectPalace: controller.selectPalace,
@@ -169,6 +168,21 @@ class InterpretationPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static int _tabBundleCost(
+    InterpretationState state,
+    List<ReadingSection> sections,
+  ) {
+    if (sections.isNotEmpty) {
+      final groupSlug = sections.first.groupSlug;
+      for (final group in state.catalog?.groups ?? const <ReadingGroup>[]) {
+        if (group.groupSlug == groupSlug && group.tabBundleCost > 0) {
+          return group.tabBundleCost;
+        }
+      }
+    }
+    return sections.fold<int>(0, (total, section) => total + section.coinCost);
   }
 
   Future<void> _confirmBundleUnlock(
@@ -441,6 +455,10 @@ class _TabContent extends StatelessWidget {
               status != UnlockStatus.syncing;
         })
         .toList(growable: false);
+    final tabBundleCost = InterpretationPage._tabBundleCost(
+      state,
+      lockedSections,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -475,7 +493,7 @@ class _TabContent extends StatelessWidget {
                       : () => onUnlockGroup(lockedSections),
                   icon: const Icon(Icons.lock_open_rounded, size: 14),
                   label: Text(
-                    'MỞ FULL (${lockedSections.fold<int>(0, (total, section) => total + section.coinCost)} XU)',
+                    'MỞ FULL ($tabBundleCost XU)',
                     style: const TextStyle(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w900,
@@ -496,31 +514,21 @@ class _TabContent extends StatelessWidget {
                 section: section,
                 isUnlocked: _canRead(section),
                 unlockStatus: _statusForSection(section),
-                isSharedContent:
-                    _resolveContent(section).source !=
-                        ContentSource.generatedInterpretation &&
-                    InterpretationTopicMapper.topicFor(section) != null,
+                isSharedContent: false,
                 onOpen: () => showInterpretationSectionPreview(
                   context,
                   section: section,
                   content: _resolveContent(section),
                   isUnlocked: _canRead(section),
-                  topic:
-                      _canRead(section) &&
-                          _resolveContent(section).source !=
-                              ContentSource.generatedInterpretation
-                      ? InterpretationTopicMapper.topicFor(section)
-                      : null,
-                  isSharedContent:
-                      _resolveContent(section).source !=
-                          ContentSource.generatedInterpretation &&
-                      InterpretationTopicMapper.topicFor(section) != null,
+                  topic: null,
+                  isSharedContent: false,
                   onUnlock: () => onUnlock(section),
                 ),
                 onUnlock: () => onUnlock(section),
               ),
             ),
-          if (state.selectedTab == InterpretationTab.overview)
+          if (state.selectedTab == InterpretationTab.overview &&
+              state.catalog == null)
             ..._generatedOverviewCards(context),
         ] else if (!state.isLoadingSections)
           const Padding(
@@ -535,9 +543,6 @@ class _TabContent extends StatelessWidget {
   }
 
   UnlockStatus _statusForSection(ReadingSection section) {
-    if (_serverUnlockFor(section) == false && isUnlocked(section)) {
-      return UnlockStatus.syncing;
-    }
     if (_canRead(section)) return UnlockStatus.unlocked;
     final chartId = state.context?.chartId;
     if (chartId == null) return UnlockStatus.idle;
@@ -557,51 +562,7 @@ class _TabContent extends StatelessWidget {
         chartData: state.context?.chartData ?? const {},
       );
 
-  bool _canRead(ReadingSection section) {
-    final serverValue = _serverUnlockFor(section);
-    return serverValue ?? isUnlocked(section);
-  }
-
-  bool? _serverUnlockFor(ReadingSection section) {
-    final interpretation = state.interpretation;
-    if (interpretation == null) return null;
-    for (final generated in interpretation.overviewSections) {
-      final mapped = GeneratedOverviewSectionMapper.toSection(generated);
-      if (mapped?.sectionSlug == section.sectionSlug) {
-        return generated.isUnlocked;
-      }
-    }
-    const palaceBySlug = <String, String>{
-      'cung_menh': 'Mệnh',
-      'cung_phu_mau': 'Phụ Mẫu',
-      'cung_phu_the': 'Phu Thê',
-      'cung_quan_loc': 'Quan Lộc',
-      'cung_tai_bach': 'Tài Bạch',
-      'cung_tat_ach': 'Tật Ách',
-      'cung_dien_trach': 'Điền Trạch',
-    };
-    final palaceName = palaceBySlug[section.sectionSlug];
-    if (palaceName != null) {
-      for (final palace in interpretation.palaceReadingSections) {
-        final title = palace.title.toLowerCase();
-        if (title == palaceName.toLowerCase() ||
-            title == 'cung ${palaceName.toLowerCase()}') {
-          return palace.isUnlocked;
-        }
-      }
-    }
-    final timingSection = switch (section.sectionSlug) {
-      'dai_van_10_nam' => interpretation.timing.daiVan,
-      'tieu_han_nam_nay' => interpretation.timing.tieuVan,
-      _ => null,
-    };
-    if (timingSection != null) return timingSection.isUnlocked;
-    if (section.sectionSlug == 'phong_thuy_ung_dung' &&
-        interpretation.guidanceSections.isNotEmpty) {
-      return interpretation.guidanceSections.every((item) => item.isUnlocked);
-    }
-    return null;
-  }
+  bool _canRead(ReadingSection section) => isUnlocked(section);
 
   List<Widget> _generatedOverviewCards(BuildContext context) {
     final interpretation = state.interpretation;
@@ -761,7 +722,7 @@ class _TabContent extends StatelessWidget {
             section: section,
             content: content,
             isUnlocked: true,
-            topic: InterpretationTopicMapper.topicFor(section),
+            topic: null,
             onUnlock: () => onUnlock(section),
           );
         },
@@ -780,7 +741,10 @@ class _TabContent extends StatelessWidget {
     return switch (section.groupSlug) {
       'chi_tiet_12_cung' => InterpretationTab.palaces,
       'dai_van_tieu_han' => InterpretationTab.fortunes,
+      'van_han_theo_thoi_gian' => InterpretationTab.fortunes,
       'goi_y_ung_dung' => InterpretationTab.guidance,
+      'phong_thuy_cai_van' => InterpretationTab.guidance,
+      'phong_thuy_va_cai_van' => InterpretationTab.guidance,
       _ => InterpretationTab.overview,
     };
   }

@@ -108,4 +108,31 @@ void main() {
     expect(package.maxSavedCharts, 20);
     expect(package.coinsGranted, 3500);
   });
+
+  test('parses payment order status and localized history date', () {
+    final completed = PaymentOrder.fromJson({
+      'id': 'PAY123',
+      'orderCode': 123456,
+      'productType': 'COIN',
+      'productName': 'Gói Khởi Đầu',
+      'amount': 9999,
+      'status': 'SUCCESS',
+      'coinsGranted': 500,
+      'coinBalance': 1200,
+      'paidAt': '2026-10-29T09:30:00+07:00',
+    });
+    final history = PaymentOrder.fromJson({
+      'id': 'PAY124',
+      'planName': 'Nạp Gói Khởi Đầu',
+      'amount': 9999,
+      'statusRaw': 'PENDING',
+      'createdAt': '29/10/2026 09:20',
+    });
+
+    expect(completed.isSuccess, isTrue);
+    expect(completed.isTerminal, isTrue);
+    expect(completed.coinBalance, 1200);
+    expect(history.isPending, isTrue);
+    expect(history.createdAt, DateTime(2026, 10, 29, 9, 20));
+  });
 }

@@ -83,7 +83,7 @@ void main() {
       );
 
       repository.permissions = {keyOf(first)};
-      await controller.loadUnlocks();
+      await controller.loadSections();
 
       expect(controller.isUnlocked(first), isTrue);
       expect(controller.statusFor(first), UnlockStatus.unlocked);
@@ -114,36 +114,39 @@ void main() {
     expect(controller.statusFor(second), UnlockStatus.syncing);
   });
 
-  test('content and unlock requests stay isolated by reading mode', () async {
-    final repository = _FakeInterpretationRepository(
-      postKeys: {everydayKeyOf(first)},
-      permissionsAfterPost: {everydayKeyOf(first)},
-    );
-    final container = containerFor(repository);
-    await Future<void>.delayed(Duration.zero);
-    final controller = container.read(
-      interpretationControllerProvider.notifier,
-    );
+  test(
+    'one purchase grants both reading modes when catalog confirms it',
+    () async {
+      final repository = _FakeInterpretationRepository(
+        postKeys: {everydayKeyOf(first)},
+        permissionsAfterPost: {everydayKeyOf(first)},
+      );
+      final container = containerFor(repository);
+      await Future<void>.delayed(Duration.zero);
+      final controller = container.read(
+        interpretationControllerProvider.notifier,
+      );
 
-    expect(repository.generatedModes, contains(InterpretationMode.deep));
+      expect(repository.generatedModes, contains(InterpretationMode.deep));
 
-    controller.changeMode(InterpretationMode.everyday);
-    await Future<void>.delayed(Duration.zero);
+      controller.changeMode(InterpretationMode.everyday);
+      await Future<void>.delayed(Duration.zero);
 
-    expect(
-      container.read(interpretationControllerProvider).mode,
-      InterpretationMode.everyday,
-    );
-    expect(repository.generatedModes, contains(InterpretationMode.everyday));
+      expect(
+        container.read(interpretationControllerProvider).mode,
+        InterpretationMode.everyday,
+      );
+      expect(repository.generatedModes, contains(InterpretationMode.everyday));
 
-    await controller.unlock(first);
+      await controller.unlock(first);
 
-    expect(repository.unlockModes.last, InterpretationMode.everyday);
-    expect(controller.isUnlocked(first), isTrue);
+      expect(repository.unlockModes.last, InterpretationMode.everyday);
+      expect(controller.isUnlocked(first), isTrue);
 
-    controller.changeMode(InterpretationMode.deep);
-    expect(controller.isUnlocked(first), isFalse);
-  });
+      controller.changeMode(InterpretationMode.deep);
+      expect(controller.isUnlocked(first), isTrue);
+    },
+  );
 
   test(
     'saved chart keeps stored interpretation when engine rejects chart',
@@ -168,7 +171,7 @@ void main() {
 
       final state = container.read(interpretationControllerProvider);
       expect(state.interpretation?.personalityCore, saved.personalityCore);
-      expect(state.contentError, isNull);
+      expect(state.contentError, contains('Đang hiển thị nội dung dự phòng'));
     },
   );
 }
@@ -192,6 +195,36 @@ class _FakeInterpretationRepository extends InterpretationRepository {
   @override
   Future<List<ReadingSection>> getSections({CancelToken? cancelToken}) async =>
       const [];
+
+  @override
+  Future<ReadingCatalog> getCatalog({
+    String? chartId,
+    CancelToken? cancelToken,
+  }) async {
+    ReadingSection section(String slug, int order) => ReadingSection(
+      id: slug,
+      groupSlug: 'tong_quan_ban_menh',
+      groupTitle: 'Tổng quan',
+      sectionSlug: slug,
+      title: slug,
+      subtitle: '',
+      summary: '',
+      iconName: '',
+      coinCost: 100,
+      order: order,
+      isUnlocked: permissions.any((key) => key.contains(':$slug:')),
+      hasUnlockState: true,
+    );
+
+    final sections = [
+      section('ban_menh_va_than', 1),
+      section('am_duong_ngu_hanh', 2),
+    ];
+    return ReadingCatalog(
+      sections: sections,
+      pricing: const ReadingPricing(buyOneGetBothModes: true),
+    );
+  }
 
   @override
   Future<Set<String>> getUnlocks({
@@ -249,6 +282,7 @@ class _FakeInterpretationRepository extends InterpretationRepository {
     required String chartId,
     required InterpretationMode mode,
     required List<ReadingSection> sections,
+    String scope = 'bundle',
     String? voucherCode,
     CancelToken? cancelToken,
   }) async {

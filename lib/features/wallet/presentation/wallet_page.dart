@@ -234,6 +234,23 @@ class _BalancePanel extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 7),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => context.push(AppRoute.paymentOrders),
+                  icon: const Icon(Icons.receipt_long_rounded, size: 15),
+                  label: const Text('LỊCH SỬ ĐƠN THANH TOÁN'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF8A5A12),
+                    visualDensity: VisualDensity.compact,
+                    textStyle: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 3),
               const Text(
                 'Tài khoản: Thành viên Tử Vi AI',

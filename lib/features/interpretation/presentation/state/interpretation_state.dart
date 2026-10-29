@@ -7,6 +7,7 @@ class InterpretationState {
     this.selectedTab = InterpretationTab.overview,
     this.selectedPalace,
     this.sections = const [],
+    this.catalog,
     this.canonicalUnlockedKeys = const {},
     this.legacyUnlockKeys = const [],
     this.contentByMode = const {},
@@ -28,6 +29,7 @@ class InterpretationState {
   final InterpretationTab selectedTab;
   final String? selectedPalace;
   final List<ReadingSection> sections;
+  final ReadingCatalog? catalog;
   final Set<ReadingSectionKey> canonicalUnlockedKeys;
   final List<LegacyUnlockKey> legacyUnlockKeys;
   final Map<InterpretationMode, InterpretationData> contentByMode;
@@ -65,6 +67,7 @@ class InterpretationState {
     String? selectedPalace,
     bool clearSelectedPalace = false,
     List<ReadingSection>? sections,
+    ReadingCatalog? catalog,
     Set<ReadingSectionKey>? canonicalUnlockedKeys,
     List<LegacyUnlockKey>? legacyUnlockKeys,
     Map<InterpretationMode, InterpretationData>? contentByMode,
@@ -92,6 +95,7 @@ class InterpretationState {
         ? null
         : selectedPalace ?? this.selectedPalace,
     sections: sections ?? this.sections,
+    catalog: catalog ?? this.catalog,
     canonicalUnlockedKeys: canonicalUnlockedKeys ?? this.canonicalUnlockedKeys,
     legacyUnlockKeys: legacyUnlockKeys ?? this.legacyUnlockKeys,
     contentByMode: contentByMode ?? this.contentByMode,

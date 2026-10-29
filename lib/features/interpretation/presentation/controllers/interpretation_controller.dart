@@ -164,8 +164,6 @@ class InterpretationController extends Notifier<InterpretationState> {
 
   void _loadAll(int session) {
     loadSections(session: session);
-    final chartId = state.context?.chartId;
-    if (chartId != null) loadUnlocks(session: session);
     loadInterpretation(
       session: session,
       force: state.contentByMode.containsKey(state.mode),
@@ -179,11 +177,37 @@ class InterpretationController extends Notifier<InterpretationState> {
     _sectionsToken = token;
     state = state.copyWith(isLoadingSections: true, clearCatalogError: true);
     try {
-      final sections = await ref
+      final chartId = state.context?.chartId;
+      final catalog = await ref
           .read(interpretationRepositoryProvider)
-          .getSections(cancelToken: token);
+          .getCatalog(chartId: chartId, cancelToken: token);
       if (!_isCurrent(activeSession, token)) return;
-      state = state.copyWith(sections: sections, isLoadingSections: false);
+      final catalogHasPermissionState =
+          chartId != null &&
+          (catalog.allUnlocked ||
+              catalog.sections.every((section) => section.hasUnlockState));
+      final catalogPermissions = chartId == null
+          ? const <ReadingSectionKey>{}
+          : catalogHasPermissionState
+          ? _permissionsFromCatalog(chartId, catalog)
+          : state.canonicalUnlockedKeys;
+      if (chartId != null && catalogHasPermissionState) {
+        _cachePermissions(chartId, catalogPermissions);
+      }
+      final reconciledStatuses = _reconcileUnlockStatuses(
+        state.unlockStatusBySection,
+        catalogPermissions,
+      );
+      state = state.copyWith(
+        catalog: catalog,
+        sections: catalog.sections,
+        canonicalUnlockedKeys: catalogPermissions,
+        unlockStatusBySection: reconciledStatuses,
+        isLoadingSections: false,
+      );
+      if (chartId != null && !catalogHasPermissionState) {
+        await loadUnlocks(session: activeSession);
+      }
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) return;
       _setTaskError(error.userMessage, sections: true);
@@ -255,6 +279,7 @@ class InterpretationController extends Notifier<InterpretationState> {
       clearContentError: true,
     );
     try {
+      String? contentWarning;
       InterpretationData content;
       if (force) {
         // Quyền đọc và nội dung là hai nguồn độc lập. Sau khi mở khóa, tải cả
@@ -270,29 +295,32 @@ class InterpretationController extends Notifier<InterpretationState> {
         content = saved.mergeDetailed(generated);
         if (content.isEmpty && generatedError != null) {
           Error.throwWithStackTrace(generatedError, StackTrace.current);
+        } else if (generatedError != null) {
+          contentWarning = _contentFallbackMessage(generatedError);
         }
       } else if (context.isSaved && mode == InterpretationMode.deep) {
+        Object? generatedError;
+        InterpretationData generated = const InterpretationData();
         try {
-          content = await ref
-              .read(interpretationRepositoryProvider)
-              .getSavedInterpretation(
-                chartId: context.chartId!,
-                cancelToken: token,
-              );
-          if (content.isEmpty) {
-            content = await _generateIfPossible(context, mode, token);
-          }
-        } on InterpretationException catch (error) {
-          if (error.statusCode != 404) rethrow;
-          content = await _generateIfPossible(context, mode, token);
+          generated = await _generateIfPossible(context, mode, token);
+        } catch (error) {
+          generatedError = error;
+        }
+        final saved = await _loadSavedInterpretationOrEmpty(context, token);
+        content = saved.mergeDetailed(generated);
+        if (content.isEmpty && generatedError != null) {
+          Error.throwWithStackTrace(generatedError, StackTrace.current);
+        } else if (generatedError != null) {
+          contentWarning = _contentFallbackMessage(generatedError);
         }
       } else {
         try {
           content = await _generateIfPossible(context, mode, token);
-        } catch (_) {
+        } catch (error) {
           final saved = await _loadSavedInterpretationOrEmpty(context, token);
           if (saved.isEmpty) rethrow;
           content = saved;
+          contentWarning = _contentFallbackMessage(error);
         }
       }
       if (!_isCurrent(activeSession, token) || state.mode != mode) return;
@@ -304,6 +332,8 @@ class InterpretationController extends Notifier<InterpretationState> {
           mode: content,
         }),
         isLoadingInterpretation: false,
+        contentError: contentWarning,
+        clearContentError: contentWarning == null,
       );
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) return;
@@ -374,7 +404,11 @@ class InterpretationController extends Notifier<InterpretationState> {
   }
 
   bool isUnlocked(ReadingSection section) {
-    if (section.isFree) return true;
+    if (section.isFree ||
+        section.isUnlocked ||
+        state.catalog?.allUnlocked == true) {
+      return true;
+    }
     final chartId = state.context?.chartId;
     if (chartId == null) return false;
     return state.canonicalUnlockedKeys.contains(
@@ -463,7 +497,7 @@ class InterpretationController extends Notifier<InterpretationState> {
         // Lá số đã được lưu thành công; lỗi làm mới hồ sơ không được biến
         // giao dịch thành thất bại hoặc khiến người dùng lưu trùng.
       }
-      loadUnlocks();
+      loadSections();
       return true;
     } on ChartException catch (error) {
       state = state.copyWith(isSavingChart: false, chartError: error.message);
@@ -615,6 +649,21 @@ class InterpretationController extends Notifier<InterpretationState> {
     _unlockToken = token;
     final session = _session;
     final mode = state.mode;
+    final allLocked = state.sections
+        .where((section) => !section.isFree && !isUnlocked(section))
+        .toList(growable: false);
+    final pendingSlugs = pending.map((section) => section.sectionSlug).toSet();
+    final unlocksAll =
+        allLocked.isNotEmpty &&
+        allLocked.every(
+          (section) => pendingSlugs.contains(section.sectionSlug),
+        );
+    final groupSlugs = pending.map((section) => section.groupSlug).toSet();
+    final scope = unlocksAll
+        ? 'all'
+        : groupSlugs.length == 1
+        ? 'tab'
+        : 'bundle';
     final keys = pending
         .map(_sectionKey)
         .whereType<ReadingSectionKey>()
@@ -627,6 +676,7 @@ class InterpretationController extends Notifier<InterpretationState> {
             chartId: context.chartId!,
             mode: mode,
             sections: pending,
+            scope: scope,
             voucherCode: voucherCode,
             cancelToken: token,
           );
@@ -705,8 +755,9 @@ class InterpretationController extends Notifier<InterpretationState> {
     for (final delay in retryDelays) {
       if (delay > Duration.zero) await Future<void>.delayed(delay);
       if (session != _session) return permissions;
-      permissions = await loadUnlocks(session: session);
-      if (permissions != null && expected.every(permissions.contains)) {
+      await loadSections(session: session);
+      permissions = state.canonicalUnlockedKeys;
+      if (expected.every(permissions.contains)) {
         return permissions;
       }
     }
@@ -744,6 +795,16 @@ class InterpretationController extends Notifier<InterpretationState> {
 
   static String? _notEmpty(String? value) =>
       value == null || value.trim().isEmpty ? null : value;
+
+  static String _contentFallbackMessage(Object error) {
+    final detail = switch (error) {
+      InterpretationException exception => exception.message,
+      DioException exception => exception.userMessage,
+      _ => error.toString(),
+    };
+    return 'Đang hiển thị nội dung dự phòng vì chưa tải được bản luận giải '
+        'cá nhân đầy đủ. $detail';
+  }
 
   static Map<String, dynamic> _mergeChartData(
     Map<String, dynamic> cached,
@@ -870,6 +931,29 @@ class InterpretationController extends Notifier<InterpretationState> {
       '[Interpretation] Ignored ${snapshot.legacyKeys.length} legacy unlock '
       'keys: $counts',
     );
+  }
+
+  static Set<ReadingSectionKey> _permissionsFromCatalog(
+    String chartId,
+    ReadingCatalog catalog,
+  ) {
+    final result = <ReadingSectionKey>{};
+    for (final section in catalog.sections) {
+      if (!catalog.allUnlocked && !section.isUnlocked && !section.isFree) {
+        continue;
+      }
+      for (final mode in InterpretationMode.values) {
+        result.add(
+          ReadingSectionKey(
+            chartId: chartId,
+            mode: mode,
+            groupSlug: section.groupSlug,
+            sectionSlug: section.sectionSlug,
+          ),
+        );
+      }
+    }
+    return Set.unmodifiable(result);
   }
 }
 
