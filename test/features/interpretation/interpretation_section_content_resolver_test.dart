@@ -152,7 +152,7 @@ void main() {
     expect(content.fullContent, contains('Mô tả sao Thiên Phủ'));
   });
 
-  test('maps all seven available palace slugs to exact palace names', () {
+  test('maps all twelve palace slugs to exact palace names', () {
     const mappings = <String, String>{
       'cung_menh': 'MỆNH',
       'cung_phu_mau': 'PHỤ MẪU',
@@ -161,6 +161,11 @@ void main() {
       'cung_tai_bach': 'TÀI BẠCH',
       'cung_tat_ach': 'TẬT ÁCH',
       'cung_dien_trach': 'ĐIỀN TRẠCH',
+      'cung_tu_tuc': 'TỬ TỨC',
+      'cung_phuc_duc': 'PHÚC ĐỨC',
+      'cung_no_boc': 'NÔ BỘC',
+      'cung_thien_di': 'THIÊN DI',
+      'cung_huynh_de': 'HUYNH ĐỆ',
     };
     for (final entry in mappings.entries) {
       final content = resolver.resolve(

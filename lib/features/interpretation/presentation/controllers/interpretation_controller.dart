@@ -259,18 +259,18 @@ class InterpretationController extends Notifier<InterpretationState> {
       if (force) {
         // Quyền đọc và nội dung là hai nguồn độc lập. Sau khi mở khóa, tải cả
         // snapshot đã lưu lẫn bản sinh mới rồi chọn nội dung chi tiết hơn.
-        final generatedFuture = _generateIfPossible(context, mode, token);
-        final savedFuture = context.isSaved
-            ? ref
-                  .read(interpretationRepositoryProvider)
-                  .getSavedInterpretation(
-                    chartId: context.chartId!,
-                    cancelToken: token,
-                  )
-                  .catchError((_) => const InterpretationData())
-            : Future.value(const InterpretationData());
-        final values = await Future.wait([savedFuture, generatedFuture]);
-        content = values[0].mergeDetailed(values[1]);
+        Object? generatedError;
+        InterpretationData generated = const InterpretationData();
+        try {
+          generated = await _generateIfPossible(context, mode, token);
+        } catch (error) {
+          generatedError = error;
+        }
+        final saved = await _loadSavedInterpretationOrEmpty(context, token);
+        content = saved.mergeDetailed(generated);
+        if (content.isEmpty && generatedError != null) {
+          Error.throwWithStackTrace(generatedError, StackTrace.current);
+        }
       } else if (context.isSaved && mode == InterpretationMode.deep) {
         try {
           content = await ref
@@ -287,7 +287,13 @@ class InterpretationController extends Notifier<InterpretationState> {
           content = await _generateIfPossible(context, mode, token);
         }
       } else {
-        content = await _generateIfPossible(context, mode, token);
+        try {
+          content = await _generateIfPossible(context, mode, token);
+        } catch (_) {
+          final saved = await _loadSavedInterpretationOrEmpty(context, token);
+          if (saved.isEmpty) rethrow;
+          content = saved;
+        }
       }
       if (!_isCurrent(activeSession, token) || state.mode != mode) return;
       final chartId = context.chartId;
@@ -325,6 +331,23 @@ class InterpretationController extends Notifier<InterpretationState> {
       return Future.value(const InterpretationData());
     }
     return _generate(context, mode, token);
+  }
+
+  Future<InterpretationData> _loadSavedInterpretationOrEmpty(
+    InterpretationChartContext context,
+    CancelToken token,
+  ) async {
+    if (!context.isSaved) return const InterpretationData();
+    try {
+      return await ref
+          .read(interpretationRepositoryProvider)
+          .getSavedInterpretation(
+            chartId: context.chartId!,
+            cancelToken: token,
+          );
+    } catch (_) {
+      return const InterpretationData();
+    }
   }
 
   void selectTab(InterpretationTab tab) {
@@ -507,7 +530,9 @@ class InterpretationController extends Notifier<InterpretationState> {
       } catch (_) {
         // Giao dịch đã được POST thành công; lỗi refresh số dư không đổi kết quả.
       }
-      final permissions = await loadUnlocks(session: session);
+      final permissions = await _waitForUnlockPermissions([
+        key,
+      ], session: session);
       if (!_isCurrent(session, token)) return result;
       if (permissions?.contains(key) == true) {
         _setUnlockStatuses([key], UnlockStatus.unlocked, clearError: true);
@@ -617,7 +642,10 @@ class InterpretationController extends Notifier<InterpretationState> {
       } catch (_) {
         // Giao dịch đã được POST thành công; lỗi refresh số dư không đổi kết quả.
       }
-      final permissions = await loadUnlocks(session: session);
+      final permissions = await _waitForUnlockPermissions(
+        keys,
+        session: session,
+      );
       if (!_isCurrent(session, token)) return result;
       final unresolved = keys
           .where((key) => permissions?.contains(key) != true)
@@ -661,6 +689,28 @@ class InterpretationController extends Notifier<InterpretationState> {
       );
       return null;
     }
+  }
+
+  Future<Set<ReadingSectionKey>?> _waitForUnlockPermissions(
+    Iterable<ReadingSectionKey> expectedKeys, {
+    required int session,
+  }) async {
+    final expected = expectedKeys.toSet();
+    Set<ReadingSectionKey>? permissions;
+    const retryDelays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 350),
+      Duration(milliseconds: 900),
+    ];
+    for (final delay in retryDelays) {
+      if (delay > Duration.zero) await Future<void>.delayed(delay);
+      if (session != _session) return permissions;
+      permissions = await loadUnlocks(session: session);
+      if (permissions != null && expected.every(permissions.contains)) {
+        return permissions;
+      }
+    }
+    return permissions;
   }
 
   void _setTaskError(

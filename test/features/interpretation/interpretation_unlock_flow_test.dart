@@ -144,16 +144,47 @@ void main() {
     controller.changeMode(InterpretationMode.deep);
     expect(controller.isUnlocked(first), isFalse);
   });
+
+  test(
+    'saved chart keeps stored interpretation when engine rejects chart',
+    () async {
+      const saved = InterpretationData(
+        personalityCore: 'Stored personal interpretation',
+      );
+      final repository = _FakeInterpretationRepository(
+        postKeys: const {},
+        permissionsAfterPost: const {},
+        savedData: saved,
+        throwOnGenerate: true,
+      );
+      final container = containerFor(repository);
+      await Future<void>.delayed(Duration.zero);
+      final controller = container.read(
+        interpretationControllerProvider.notifier,
+      );
+
+      controller.changeMode(InterpretationMode.everyday);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(interpretationControllerProvider);
+      expect(state.interpretation?.personalityCore, saved.personalityCore);
+      expect(state.contentError, isNull);
+    },
+  );
 }
 
 class _FakeInterpretationRepository extends InterpretationRepository {
   _FakeInterpretationRepository({
     required this.postKeys,
     required this.permissionsAfterPost,
+    this.savedData = const InterpretationData(),
+    this.throwOnGenerate = false,
   }) : super(Dio());
 
   final Set<String> postKeys;
   final Set<String> permissionsAfterPost;
+  final InterpretationData savedData;
+  final bool throwOnGenerate;
   Set<String> permissions = {};
   final List<InterpretationMode> generatedModes = [];
   final List<InterpretationMode> unlockModes = [];
@@ -172,7 +203,7 @@ class _FakeInterpretationRepository extends InterpretationRepository {
   Future<InterpretationData> getSavedInterpretation({
     required String chartId,
     CancelToken? cancelToken,
-  }) async => const InterpretationData();
+  }) async => savedData;
 
   @override
   Future<InterpretationData> generate({
@@ -181,6 +212,12 @@ class _FakeInterpretationRepository extends InterpretationRepository {
     DateTime? readingDate,
     CancelToken? cancelToken,
   }) async {
+    if (throwOnGenerate) {
+      throw const InterpretationException(
+        'Dữ liệu lá số không hợp lệ hoặc chưa đủ 12 cung',
+        statusCode: 422,
+      );
+    }
     generatedModes.add(mode);
     return InterpretationData(
       aiShortSummary: mode.apiValue,

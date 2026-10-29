@@ -67,7 +67,7 @@ void main() {
     expect(pressed, isFalse);
   });
 
-  testWidgets('section card prevents a second payment while syncing', (
+  testWidgets('section card allows permission refresh while syncing', (
     tester,
   ) async {
     var pressed = false;
@@ -85,6 +85,6 @@ void main() {
 
     expect(find.text('Đang đồng bộ quyền'), findsOneWidget);
     await tester.tap(find.text('Đang đồng bộ quyền'));
-    expect(pressed, isFalse);
+    expect(pressed, isTrue);
   });
 }

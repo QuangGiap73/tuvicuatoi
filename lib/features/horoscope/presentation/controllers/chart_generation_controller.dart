@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../wallet/data/wallet_repository.dart';
 import '../../data/chart_repository.dart';
 import '../../domain/chart_request.dart';
 import '../state/chart_generation_state.dart';
@@ -41,6 +42,14 @@ class ChartGenerationController extends Notifier<ChartGenerationState> {
         request: request,
         result: result,
       );
+      try {
+        await ref
+            .read(walletRepositoryProvider)
+            .recordChartCreation(cancelToken: token);
+      } catch (_) {
+        // Lá số đã được tạo thành công. Lỗi ghi nhận nhiệm vụ không được làm
+        // hỏng kết quả và backend sẽ là nguồn xác nhận phần thưởng.
+      }
       return true;
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) return false;

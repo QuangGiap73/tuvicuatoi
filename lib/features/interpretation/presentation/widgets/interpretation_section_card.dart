@@ -198,7 +198,7 @@ class _SectionAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: !isUnlocked,
-    enabled: canUnlock && !isUnlocked && !_isLoading && !_isSyncing,
+    enabled: canUnlock && !isUnlocked && !_isLoading,
     label: isUnlocked
         ? 'Đã mở khóa'
         : _isSyncing
@@ -210,9 +210,7 @@ class _SectionAction extends StatelessWidget {
       color: isUnlocked ? const Color(0xFF437A5E) : const Color(0xFF986216),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: !canUnlock || isUnlocked || _isLoading || _isSyncing
-            ? null
-            : onPressed,
+        onTap: !canUnlock || isUnlocked || _isLoading ? null : onPressed,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

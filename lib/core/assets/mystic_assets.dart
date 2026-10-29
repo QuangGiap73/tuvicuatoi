@@ -42,6 +42,7 @@ abstract final class MysticAssets {
   static const palaceDetailFrame = '$frame/frame_A_3.png';
   static const palaceDetailBanner = '$frame/frame_A_4.png';
   static const notificationFrame = '$frame/frame_thong_bao.png';
+  static const walletFrame = '$frame/frame_wallet.png';
   static const myChartCardFrame = '$frame/frame_la_so_cua_toi.png';
   static const aiChatBubble = '$chat/chat_A.png';
   static const aiChatBubbleAi = '$chat/frame_ai_chat.png';

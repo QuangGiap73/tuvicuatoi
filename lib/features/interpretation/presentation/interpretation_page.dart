@@ -308,9 +308,25 @@ class InterpretationPage extends ConsumerWidget {
     final currentStatus = unlockController.statusFor(section);
     if (!unlockController.canPurchase(section)) {
       if (currentStatus == UnlockStatus.syncing && context.mounted) {
+        final permissions = await unlockController.loadUnlocks();
+        final key = ReadingSectionKey(
+          chartId: state.context!.chartId!,
+          mode: state.mode,
+          groupSlug: section.groupSlug,
+          sectionSlug: section.sectionSlug,
+        );
+        final synchronized = permissions?.contains(key) == true;
+        if (synchronized) {
+          await unlockController.loadInterpretation(force: true);
+        }
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã thanh toán, đang đồng bộ quyền đọc.'),
+          SnackBar(
+            content: Text(
+              synchronized
+                  ? 'Quyền đọc đã được đồng bộ.'
+                  : 'Backend chưa trả quyền đọc. Bạn có thể thử tải lại sau.',
+            ),
           ),
         );
       }
