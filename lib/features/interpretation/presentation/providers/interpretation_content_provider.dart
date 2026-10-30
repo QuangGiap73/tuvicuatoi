@@ -11,6 +11,7 @@ final interpretationContentProvider = Provider<InterpretationContentState>((
     context: state.context,
     mode: state.mode,
     interpretation: state.interpretation,
+    contentRevision: state.contentRevision,
     isLoadingChart: state.isLoadingChart,
     isLoadingContent: state.isLoadingInterpretation,
     isSavingChart: state.isSavingChart,

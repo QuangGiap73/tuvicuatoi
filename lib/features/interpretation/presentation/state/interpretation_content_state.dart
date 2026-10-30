@@ -8,6 +8,7 @@ class InterpretationContentState {
     this.context,
     this.mode = InterpretationMode.deep,
     this.interpretation,
+    this.contentRevision = 0,
     this.isLoadingChart = false,
     this.isLoadingContent = false,
     this.isSavingChart = false,
@@ -18,6 +19,7 @@ class InterpretationContentState {
   final InterpretationChartContext? context;
   final InterpretationMode mode;
   final InterpretationData? interpretation;
+  final int contentRevision;
   final bool isLoadingChart;
   final bool isLoadingContent;
   final bool isSavingChart;
@@ -31,6 +33,7 @@ class InterpretationContentState {
           identical(context, other.context) &&
           mode == other.mode &&
           identical(interpretation, other.interpretation) &&
+          contentRevision == other.contentRevision &&
           isLoadingChart == other.isLoadingChart &&
           isLoadingContent == other.isLoadingContent &&
           isSavingChart == other.isSavingChart &&
@@ -42,6 +45,7 @@ class InterpretationContentState {
     identityHashCode(context),
     mode,
     identityHashCode(interpretation),
+    contentRevision,
     isLoadingChart,
     isLoadingContent,
     isSavingChart,

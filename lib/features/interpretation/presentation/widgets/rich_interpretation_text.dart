@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Trình bày bài luận giải thành các khối dễ đọc mà không thay đổi nội dung
 /// backend. Tiêu đề đoạn và phần nhãn trước dấu hai chấm được làm nổi bật.
-class RichInterpretationText extends StatelessWidget {
+class RichInterpretationText extends StatefulWidget {
   const RichInterpretationText({
     required this.text,
     super.key,
@@ -14,6 +14,66 @@ class RichInterpretationText extends StatelessWidget {
   final int? maxLines;
   final TextOverflow overflow;
 
+  @override
+  State<RichInterpretationText> createState() => _RichInterpretationTextState();
+}
+
+/// Lazy sliver variant for long, fully unlocked articles.
+class RichInterpretationSliver extends StatefulWidget {
+  const RichInterpretationSliver({required this.text, super.key});
+
+  final String text;
+
+  @override
+  State<RichInterpretationSliver> createState() =>
+      _RichInterpretationSliverState();
+}
+
+class _RichInterpretationSliverState extends State<RichInterpretationSliver> {
+  late List<String> _blocks = _RichInterpretationTextState._blocks(widget.text);
+
+  @override
+  void didUpdateWidget(covariant RichInterpretationSliver oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _blocks = _RichInterpretationTextState._blocks(widget.text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SliverList.builder(
+    itemCount: _blocks.length,
+    itemBuilder: (context, index) {
+      final block = _blocks[index];
+      final heading = _RichInterpretationTextState._isHeading(
+        block,
+        index,
+        _blocks.length,
+      );
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: index == _blocks.length - 1
+              ? 0
+              : heading
+              ? 11
+              : 16,
+        ),
+        child: heading
+            ? _SectionHeading(text: block)
+            : SelectableText.rich(
+                _RichInterpretationTextState._inlineSpan(block),
+                style: _RichInterpretationTextState._bodyStyle,
+              ),
+      );
+    },
+  );
+}
+
+class _RichInterpretationTextState extends State<RichInterpretationText> {
+  late List<String> _parsedBlocks = widget.maxLines == null
+      ? _blocks(widget.text)
+      : const [];
+
   static const _bodyStyle = TextStyle(
     color: Color(0xFF493522),
     fontSize: 14,
@@ -22,27 +82,41 @@ class RichInterpretationText extends StatelessWidget {
   );
 
   @override
+  void didUpdateWidget(covariant RichInterpretationText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text ||
+        (oldWidget.maxLines == null) != (widget.maxLines == null)) {
+      _parsedBlocks = widget.maxLines == null ? _blocks(widget.text) : const [];
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final blocks = _blocks(text);
-    if (maxLines != null) {
+    if (widget.maxLines != null) {
       return Text.rich(
-        _inlineSpan(text.trim()),
-        maxLines: maxLines,
-        overflow: overflow,
+        _inlineSpan(widget.text.trim()),
+        maxLines: widget.maxLines,
+        overflow: widget.overflow,
         style: _bodyStyle,
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var index = 0; index < blocks.length; index++) ...[
-          if (_isHeading(blocks[index], index, blocks.length))
-            _SectionHeading(text: blocks[index])
+        for (var index = 0; index < _parsedBlocks.length; index++) ...[
+          if (_isHeading(_parsedBlocks[index], index, _parsedBlocks.length))
+            _SectionHeading(text: _parsedBlocks[index])
           else
-            SelectableText.rich(_inlineSpan(blocks[index]), style: _bodyStyle),
-          if (index != blocks.length - 1)
+            SelectableText.rich(
+              _inlineSpan(_parsedBlocks[index]),
+              style: _bodyStyle,
+            ),
+          if (index != _parsedBlocks.length - 1)
             SizedBox(
-              height: _isHeading(blocks[index], index, blocks.length) ? 11 : 16,
+              height:
+                  _isHeading(_parsedBlocks[index], index, _parsedBlocks.length)
+                  ? 11
+                  : 16,
             ),
         ],
       ],

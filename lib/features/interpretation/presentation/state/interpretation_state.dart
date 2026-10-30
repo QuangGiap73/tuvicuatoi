@@ -11,6 +11,7 @@ class InterpretationState {
     this.canonicalUnlockedKeys = const {},
     this.legacyUnlockKeys = const [],
     this.contentByMode = const {},
+    this.contentRevision = 0,
     this.isLoadingChart = false,
     this.isLoadingSections = false,
     this.isLoadingUnlocks = false,
@@ -33,6 +34,7 @@ class InterpretationState {
   final Set<ReadingSectionKey> canonicalUnlockedKeys;
   final List<LegacyUnlockKey> legacyUnlockKeys;
   final Map<InterpretationMode, InterpretationData> contentByMode;
+  final int contentRevision;
   final bool isLoadingChart;
   final bool isLoadingSections;
   final bool isLoadingUnlocks;
@@ -71,6 +73,7 @@ class InterpretationState {
     Set<ReadingSectionKey>? canonicalUnlockedKeys,
     List<LegacyUnlockKey>? legacyUnlockKeys,
     Map<InterpretationMode, InterpretationData>? contentByMode,
+    int? contentRevision,
     bool? isLoadingChart,
     bool? isLoadingSections,
     bool? isLoadingUnlocks,
@@ -99,6 +102,7 @@ class InterpretationState {
     canonicalUnlockedKeys: canonicalUnlockedKeys ?? this.canonicalUnlockedKeys,
     legacyUnlockKeys: legacyUnlockKeys ?? this.legacyUnlockKeys,
     contentByMode: contentByMode ?? this.contentByMode,
+    contentRevision: contentRevision ?? this.contentRevision,
     isLoadingChart: isLoadingChart ?? this.isLoadingChart,
     isLoadingSections: isLoadingSections ?? this.isLoadingSections,
     isLoadingUnlocks: isLoadingUnlocks ?? this.isLoadingUnlocks,

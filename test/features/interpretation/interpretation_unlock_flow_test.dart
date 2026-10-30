@@ -156,6 +156,7 @@ void main() {
       final controller = container.read(
         interpretationControllerProvider.notifier,
       );
+      final catalogCallsBeforeUnlock = repository.catalogCallCount;
 
       expect(controller.isUnlocked(first), isFalse);
 
@@ -175,6 +176,8 @@ void main() {
       );
       expect(content.displayContent, isNot(contains('Mở khóa bằng Xu')));
       expect(repository.generateCallCount, greaterThanOrEqualTo(2));
+      expect(repository.unlockReadCallCount, greaterThanOrEqualTo(1));
+      expect(repository.catalogCallCount, catalogCallsBeforeUnlock + 1);
     },
   );
 
@@ -272,6 +275,8 @@ class _FakeInterpretationRepository extends InterpretationRepository {
   final InterpretationData? generatedAfterUnlock;
   Set<String> permissions = {};
   int generateCallCount = 0;
+  int catalogCallCount = 0;
+  int unlockReadCallCount = 0;
   final List<InterpretationMode> generatedModes = [];
   final List<InterpretationMode> unlockModes = [];
 
@@ -284,6 +289,7 @@ class _FakeInterpretationRepository extends InterpretationRepository {
     String? chartId,
     CancelToken? cancelToken,
   }) async {
+    catalogCallCount++;
     ReadingSection section(String slug, int order) => ReadingSection(
       id: slug,
       groupSlug: 'tong_quan_ban_menh',
@@ -313,7 +319,10 @@ class _FakeInterpretationRepository extends InterpretationRepository {
   Future<Set<String>> getUnlocks({
     required String chartId,
     CancelToken? cancelToken,
-  }) async => Set.unmodifiable(permissions);
+  }) async {
+    unlockReadCallCount++;
+    return Set.unmodifiable(permissions);
+  }
 
   @override
   Future<InterpretationData> getSavedInterpretation({

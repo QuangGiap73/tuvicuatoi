@@ -4,6 +4,9 @@ import 'section_content.dart';
 class InterpretationSectionContentResolver {
   const InterpretationSectionContentResolver();
 
+  static final Expando<_StructuredReadingIndex> _indexes =
+      Expando<_StructuredReadingIndex>('interpretation-section-index');
+
   static const _palaceBySection = <String, String>{
     'cung_menh': 'MỆNH',
     'cung_phu_mau': 'PHỤ MẪU',
@@ -106,51 +109,19 @@ class InterpretationSectionContentResolver {
     ReadingSection section,
     InterpretationData interpretation,
   ) {
-    final wanted = <String>{
+    final index = _indexes[interpretation] ??=
+        _StructuredReadingIndex.fromInterpretation(interpretation);
+    final direct = index.find(<String>[
       section.sectionSlug,
       section.topicCode,
       ...section.aliases,
-    }.where((value) => value.trim().isNotEmpty).map(_canonicalKey).toSet();
-    final candidates = <StructuredReadingSection>[
-      ...interpretation.overviewSections,
-      ...interpretation.palaceReadingSections,
-      ...interpretation.timingReadingSections,
-      ...interpretation.guidanceSections,
-    ];
-    for (final candidate in candidates) {
-      final keys = <String>{
-        candidate.id,
-        candidate.sectionSlug,
-        candidate.topicCode,
-        if (candidate.title.trim().isNotEmpty) 'cung_${candidate.title}',
-      }.where((value) => value.trim().isNotEmpty).map(_canonicalKey);
-      if (keys.any(
-        (key) => wanted.any(
-          (expected) =>
-              key == expected ||
-              (RegExp(r'^cd\d+$').hasMatch(expected) &&
-                  key.startsWith(expected)),
-        ),
-      )) {
-        return candidate;
-      }
-    }
+    ]);
+    if (direct != null) return direct;
     // Adapter cho response engine đời cũ. Catalog 35 mục dùng snake_case,
     // trong khi /tuvi/read cũ trả timing bằng camelCase và guidance bằng ID
     // `phong-thuy-*`. Chỉ ánh xạ các cặp đã được backend định nghĩa.
     final aliases = _engineAliasesBySection[section.sectionSlug] ?? const [];
-    for (final alias in aliases) {
-      final expected = _canonicalKey(alias);
-      for (final candidate in candidates) {
-        final keys = <String>{
-          candidate.id,
-          candidate.sectionSlug,
-          candidate.topicCode,
-        }.where((value) => value.trim().isNotEmpty).map(_canonicalKey);
-        if (keys.contains(expected)) return candidate;
-      }
-    }
-    return null;
+    return index.find(aliases);
   }
 
   static const _engineAliasesBySection = <String, List<String>>{
@@ -397,6 +368,55 @@ class InterpretationSectionContentResolver {
 
   static Map<String, dynamic>? _map(Object? value) =>
       value is Map ? Map<String, dynamic>.from(value) : null;
+}
+
+class _StructuredReadingIndex {
+  _StructuredReadingIndex(this._byKey);
+
+  final Map<String, StructuredReadingSection> _byKey;
+
+  factory _StructuredReadingIndex.fromInterpretation(
+    InterpretationData interpretation,
+  ) {
+    final byKey = <String, StructuredReadingSection>{};
+    final candidates = <StructuredReadingSection>[
+      ...interpretation.overviewSections,
+      ...interpretation.palaceReadingSections,
+      ...interpretation.timingReadingSections,
+      ...interpretation.guidanceSections,
+    ];
+    for (final candidate in candidates) {
+      final values = <String>[
+        candidate.id,
+        candidate.sectionSlug,
+        candidate.topicCode,
+        if (candidate.title.trim().isNotEmpty) 'cung_${candidate.title}',
+      ];
+      for (final value in values) {
+        if (value.trim().isEmpty) continue;
+        final key = InterpretationSectionContentResolver._canonicalKey(value);
+        byKey.putIfAbsent(key, () => candidate);
+      }
+    }
+    return _StructuredReadingIndex(Map.unmodifiable(byKey));
+  }
+
+  StructuredReadingSection? find(Iterable<String> values) {
+    for (final value in values) {
+      if (value.trim().isEmpty) continue;
+      final expected = InterpretationSectionContentResolver._canonicalKey(
+        value,
+      );
+      final exact = _byKey[expected];
+      if (exact != null) return exact;
+      if (RegExp(r'^cd\d+$').hasMatch(expected)) {
+        for (final entry in _byKey.entries) {
+          if (entry.key.startsWith(expected)) return entry.value;
+        }
+      }
+    }
+    return null;
+  }
 }
 
 class _Resolved {

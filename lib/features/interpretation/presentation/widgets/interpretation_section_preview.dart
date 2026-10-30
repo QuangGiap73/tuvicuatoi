@@ -186,101 +186,121 @@ class _SectionPreviewSheet extends ConsumerWidget {
                   ),
                 ),
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
-                  children: [
-                    if (contentState.isLoadingContent &&
-                        contentState.interpretation == null)
-                      const _ContentLoading()
-                    else if (activeUnlocked && topic?.trim().isNotEmpty == true)
-                      _TopicContent(topic: topic!.trim())
-                    else if (text.isEmpty)
-                      const Text(
-                        'Máy chủ chưa cung cấp nội dung xem trước cho mục này.',
-                        style: TextStyle(color: Color(0xFF786044)),
-                      )
-                    else
-                      Stack(
-                        children: [
-                          RichInterpretationText(
-                            text: text,
-                            maxLines: activeUnlocked ? null : 6,
-                            overflow: activeUnlocked
-                                ? TextOverflow.visible
-                                : TextOverflow.ellipsis,
+                child:
+                    activeUnlocked &&
+                        topic?.trim().isNotEmpty != true &&
+                        text.isNotEmpty
+                    ? CustomScrollView(
+                        controller: scrollController,
+                        slivers: [
+                          const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+                            sliver: RichInterpretationSliver(text: text),
                           ),
-                          if (!activeUnlocked)
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              height: 42,
-                              child: IgnorePointer(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        const Color(0x00F5E3BC),
-                                        const Color(0xFFF5E3BC),
-                                      ],
+                        ],
+                      )
+                    : ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+                        children: [
+                          if (contentState.isLoadingContent &&
+                              contentState.interpretation == null)
+                            const _ContentLoading()
+                          else if (activeUnlocked &&
+                              topic?.trim().isNotEmpty == true)
+                            _TopicContent(topic: topic!.trim())
+                          else if (text.isEmpty)
+                            const Text(
+                              'Máy chủ chưa cung cấp nội dung xem trước cho mục này.',
+                              style: TextStyle(color: Color(0xFF786044)),
+                            )
+                          else
+                            Stack(
+                              children: [
+                                RichInterpretationText(
+                                  text: text,
+                                  maxLines: activeUnlocked ? null : 6,
+                                  overflow: activeUnlocked
+                                      ? TextOverflow.visible
+                                      : TextOverflow.ellipsis,
+                                ),
+                                if (!activeUnlocked)
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    height: 42,
+                                    child: IgnorePointer(
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              const Color(0x00F5E3BC),
+                                              const Color(0xFFF5E3BC),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
+                              ],
+                            ),
+                          if (!activeUnlocked) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0x33C7953C),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color(0x88B77C24),
+                                ),
+                              ),
+                              child: const Text(
+                                'Phần còn lại gồm nội dung luận giải chi tiết dành riêng cho lá số này.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF6D4A20),
+                                  fontSize: 11.5,
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            if (canUnlock)
+                              FilledButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  onUnlock();
+                                },
+                                icon: const Icon(
+                                  Icons.lock_open_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  'Mở khóa ${activeSection.coinCost} Xu để đọc tiếp',
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF8D5A12),
+                                  foregroundColor: const Color(0xFFFFE8AF),
+                                  minimumSize: const Size.fromHeight(46),
+                                ),
+                              )
+                            else
+                              const Text(
+                                'Backend chưa cấu hình giá Xu cho mục này.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF7A5528),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                          ],
                         ],
                       ),
-                    if (!activeUnlocked) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0x33C7953C),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0x88B77C24)),
-                        ),
-                        child: const Text(
-                          'Phần còn lại gồm nội dung luận giải chi tiết dành riêng cho lá số này.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF6D4A20),
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (canUnlock)
-                        FilledButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            onUnlock();
-                          },
-                          icon: const Icon(Icons.lock_open_rounded, size: 18),
-                          label: Text(
-                            'Mở khóa ${activeSection.coinCost} Xu để đọc tiếp',
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF8D5A12),
-                            foregroundColor: const Color(0xFFFFE8AF),
-                            minimumSize: const Size.fromHeight(46),
-                          ),
-                        )
-                      else
-                        const Text(
-                          'Backend chưa cấu hình giá Xu cho mục này.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF7A5528),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                    ],
-                  ],
-                ),
               ),
             ],
           ),

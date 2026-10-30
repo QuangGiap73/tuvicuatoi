@@ -12,9 +12,7 @@ import '../domain/interpretation_models.dart';
 import '../domain/interpretation_section_content_resolver.dart';
 import '../domain/section_content.dart';
 import 'controllers/interpretation_controller.dart';
-import 'providers/interpretation_catalog_provider.dart';
-import 'providers/interpretation_content_provider.dart';
-import 'providers/reading_permission_provider.dart';
+import 'providers/interpretation_view_snapshot_provider.dart';
 import 'state/interpretation_state.dart';
 import 'widgets/bundle_unlock_dialog.dart';
 import 'widgets/interpretation_section_card.dart';
@@ -27,43 +25,11 @@ class InterpretationPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final contentState = ref.watch(interpretationContentProvider);
-    final catalogState = ref.watch(interpretationCatalogProvider);
-    final permissionState = ref.watch(readingPermissionProvider);
-    // Preserve the proven presentation contract while the UI is migrated to
-    // smaller providers. This is a view-only snapshot; mutations still go
-    // through InterpretationController.
-    final state = InterpretationState(
-      context: contentState.context,
-      mode: contentState.mode,
-      selectedTab: catalogState.selectedTab,
-      sections: catalogState.sections,
-      catalog: catalogState.catalog,
-      canonicalUnlockedKeys: permissionState.unlockedKeys,
-      contentByMode: contentState.interpretation == null
-          ? const {}
-          : {contentState.mode: contentState.interpretation!},
-      isLoadingChart: contentState.isLoadingChart,
-      isLoadingSections: catalogState.isLoading,
-      isLoadingUnlocks: permissionState.isLoading,
-      isLoadingInterpretation: contentState.isLoadingContent,
-      isSavingChart: contentState.isSavingChart,
-      unlockStatusBySection: permissionState.statusBySection,
-      chartError: contentState.chartError,
-      catalogError: catalogState.error,
-      permissionError: permissionState.permissionError,
-      contentError: contentState.contentError,
-      unlockError: permissionState.unlockError,
-    );
+    final state = ref.watch(interpretationViewSnapshotProvider).state;
     final controller = ref.read(interpretationControllerProvider.notifier);
-    final balance = ref.watch(
-      authControllerProvider.select(
-        (value) => value.asData?.value?.user.coinBalance ?? 0,
-      ),
-    );
     final chart = state.context;
     final lockedSections = state.sections
-        .where(permissionState.canPurchase)
+        .where(controller.canPurchase)
         .toList(growable: false);
     final calculatedUnlockCost = lockedSections.fold<int>(
       0,
@@ -86,9 +52,8 @@ class InterpretationPage extends ConsumerWidget {
                     key: const PageStorageKey('interpretation-scroll'),
                     slivers: [
                       SliverToBoxAdapter(
-                        child: _Header(
+                        child: _LiveHeader(
                           chart: chart,
-                          balance: balance,
                           onBack: context.pop,
                           onChangeChart: () =>
                               _changeChart(context, ref, chart.chartId),
@@ -118,7 +83,7 @@ class InterpretationPage extends ConsumerWidget {
                                 ref,
                                 lockedSections,
                                 totalUnlockCost,
-                                balance,
+                                _currentBalance(ref),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -164,7 +129,7 @@ class InterpretationPage extends ConsumerWidget {
                               else
                                 _TabContent(
                                   state: state,
-                                  isUnlocked: permissionState.isUnlocked,
+                                  isUnlocked: controller.isUnlocked,
                                   onUnlock: (section) =>
                                       _confirmUnlock(context, ref, section),
                                   onUnlockGroup: (sections) =>
@@ -173,7 +138,7 @@ class InterpretationPage extends ConsumerWidget {
                                         ref,
                                         sections,
                                         _tabBundleCost(state, sections),
-                                        balance,
+                                        _currentBalance(ref),
                                       ),
                                   onSelectPalace: controller.selectPalace,
                                 ),
@@ -203,6 +168,9 @@ class InterpretationPage extends ConsumerWidget {
     }
     return sections.fold<int>(0, (total, section) => total + section.coinCost);
   }
+
+  static int _currentBalance(WidgetRef ref) =>
+      ref.read(authControllerProvider).asData?.value?.user.coinBalance ?? 0;
 
   Future<void> _confirmBundleUnlock(
     BuildContext context,
@@ -441,6 +409,50 @@ class InterpretationPage extends ConsumerWidget {
               )
             : null,
       ),
+    );
+
+    // `unlock()` only reports `unlocked` after the backend permission has been
+    // confirmed and the paid content has been refreshed. Open the freshly
+    // resolved article at that point, rather than reusing the teaser captured
+    // before payment.
+    if (result != null && status == UnlockStatus.unlocked && context.mounted) {
+      await _openUnlockedSection(context, ref, section);
+    }
+  }
+
+  Future<void> _openUnlockedSection(
+    BuildContext context,
+    WidgetRef ref,
+    ReadingSection requestedSection,
+  ) async {
+    final latestState = ref.read(interpretationControllerProvider);
+    final controller = ref.read(interpretationControllerProvider.notifier);
+    final liveSection = latestState.sections.cast<ReadingSection?>().firstWhere(
+      (section) =>
+          section?.groupSlug == requestedSection.groupSlug &&
+          section?.sectionSlug == requestedSection.sectionSlug,
+      orElse: () => null,
+    );
+    final section = liveSection ?? requestedSection;
+    final interpretation = latestState.interpretation;
+
+    if (!controller.isUnlocked(section) || interpretation == null) return;
+
+    final content = const InterpretationSectionContentResolver().resolve(
+      section: section,
+      interpretation: interpretation,
+      chartData: latestState.context?.chartData ?? const {},
+    );
+
+    if (!context.mounted) return;
+    await showInterpretationSectionPreview(
+      context,
+      section: section,
+      content: content,
+      isUnlocked: true,
+      topic: null,
+      isSharedContent: false,
+      onUnlock: () {},
     );
   }
 }
@@ -790,6 +802,35 @@ class _TabContent extends StatelessWidget {
       'phong_thuy_va_cai_van' => InterpretationTab.guidance,
       _ => InterpretationTab.overview,
     };
+  }
+}
+
+class _LiveHeader extends ConsumerWidget {
+  const _LiveHeader({
+    required this.chart,
+    required this.onBack,
+    required this.onChangeChart,
+  });
+
+  final InterpretationChartContext chart;
+  final VoidCallback onBack;
+  final VoidCallback onChangeChart;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balance = ref.watch(
+      authControllerProvider.select(
+        (value) => value.asData?.value?.user.coinBalance ?? 0,
+      ),
+    );
+    return RepaintBoundary(
+      child: _Header(
+        chart: chart,
+        balance: balance,
+        onBack: onBack,
+        onChangeChart: onChangeChart,
+      ),
+    );
   }
 }
 

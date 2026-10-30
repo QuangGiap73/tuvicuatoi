@@ -9,11 +9,17 @@ import '../../../horoscope/domain/chart_request.dart';
 import '../../../horoscope/domain/chart_result.dart';
 import '../../../horoscope/domain/saved_chart.dart';
 import '../../../horoscope/presentation/providers/chart_form_providers.dart';
+import '../../application/chart_session_service.dart';
+import '../../application/interpretation_content_service.dart';
+import '../../application/reading_catalog_service.dart';
+import '../../application/reading_unlock_service.dart';
 import '../../data/interpretation_repository.dart';
 import '../../domain/interpretation_models.dart';
 import '../state/interpretation_state.dart';
 
 class InterpretationController extends Notifier<InterpretationState> {
+  static const _chartSessions = ChartSessionService();
+  static const _catalogs = ReadingCatalogService();
   CancelToken? _chartToken;
   CancelToken? _sectionsToken;
   CancelToken? _unlocksToken;
@@ -81,7 +87,10 @@ class InterpretationController extends Notifier<InterpretationState> {
           .read(chartRepositoryProvider)
           .getChartDetail(chart, cancelToken: token);
       if (!_isCurrent(session, token)) return;
-      final chartData = _mergeChartData(chart.chartData, detail.chartData);
+      final chartData = _chartSessions.mergeChartData(
+        chart.chartData,
+        detail.chartData,
+      );
       final context = InterpretationChartContext(
         name: detail.summary.displayName,
         chartId: detail.summary.id,
@@ -170,7 +179,10 @@ class InterpretationController extends Notifier<InterpretationState> {
     );
   }
 
-  Future<void> loadSections({int? session}) async {
+  Future<void> loadSections({
+    int? session,
+    bool preserveConfirmedPermissions = false,
+  }) async {
     final activeSession = session ?? _session;
     _sectionsToken?.cancel('Đang tải danh mục mới');
     final token = CancelToken();
@@ -186,15 +198,25 @@ class InterpretationController extends Notifier<InterpretationState> {
           chartId != null &&
           (catalog.allUnlocked ||
               catalog.sections.every((section) => section.hasUnlockState));
-      final catalogPermissions = chartId == null
+      var catalogPermissions = chartId == null
           ? const <ReadingSectionKey>{}
           : catalogHasPermissionState
-          ? _permissionsFromCatalog(chartId, catalog)
+          ? _catalogs.permissionsFromCatalog(
+              chartId: chartId,
+              catalog: catalog,
+              currentMode: state.mode,
+            )
           : state.canonicalUnlockedKeys;
+      if (preserveConfirmedPermissions && chartId != null) {
+        catalogPermissions = Set.unmodifiable({
+          ...state.canonicalUnlockedKeys,
+          ...catalogPermissions,
+        });
+      }
       if (chartId != null && catalogHasPermissionState) {
         _cachePermissions(chartId, catalogPermissions);
       }
-      final reconciledStatuses = _reconcileUnlockStatuses(
+      final reconciledStatuses = _catalogs.reconcileStatuses(
         state.unlockStatusBySection,
         catalogPermissions,
       );
@@ -205,7 +227,9 @@ class InterpretationController extends Notifier<InterpretationState> {
         unlockStatusBySection: reconciledStatuses,
         isLoadingSections: false,
       );
-      if (chartId != null && !catalogHasPermissionState) {
+      if (chartId != null &&
+          !catalogHasPermissionState &&
+          !preserveConfirmedPermissions) {
         await loadUnlocks(session: activeSession);
       }
     } on DioException catch (error) {
@@ -242,7 +266,7 @@ class InterpretationController extends Notifier<InterpretationState> {
         snapshot.canonicalKeys,
       );
       _cachePermissions(chartId, canonicalPermissions);
-      final reconciledStatuses = _reconcileUnlockStatuses(
+      final reconciledStatuses = _catalogs.reconcileStatuses(
         state.unlockStatusBySection,
         canonicalPermissions,
       );
@@ -281,6 +305,9 @@ class InterpretationController extends Notifier<InterpretationState> {
       isLoadingInterpretation: true,
       clearContentError: true,
     );
+    final contentService = InterpretationContentService(
+      ref.read(interpretationRepositoryProvider),
+    );
     try {
       String? contentWarning;
       InterpretationData content;
@@ -290,11 +317,18 @@ class InterpretationController extends Notifier<InterpretationState> {
         Object? generatedError;
         InterpretationData generated = const InterpretationData();
         try {
-          generated = await _generateIfPossible(context, mode, token);
+          generated = await contentService.generateIfPossible(
+            context: context,
+            mode: mode,
+            cancelToken: token,
+          );
         } catch (error) {
           generatedError = error;
         }
-        final saved = await _loadSavedInterpretationOrEmpty(context, token);
+        final saved = await contentService.loadSavedOrEmpty(
+          context: context,
+          cancelToken: token,
+        );
         content = saved.mergeDetailed(generated);
         if (content.isEmpty && generatedError != null) {
           Error.throwWithStackTrace(generatedError, StackTrace.current);
@@ -305,11 +339,18 @@ class InterpretationController extends Notifier<InterpretationState> {
         Object? generatedError;
         InterpretationData generated = const InterpretationData();
         try {
-          generated = await _generateIfPossible(context, mode, token);
+          generated = await contentService.generateIfPossible(
+            context: context,
+            mode: mode,
+            cancelToken: token,
+          );
         } catch (error) {
           generatedError = error;
         }
-        final saved = await _loadSavedInterpretationOrEmpty(context, token);
+        final saved = await contentService.loadSavedOrEmpty(
+          context: context,
+          cancelToken: token,
+        );
         content = saved.mergeDetailed(generated);
         if (content.isEmpty && generatedError != null) {
           Error.throwWithStackTrace(generatedError, StackTrace.current);
@@ -318,9 +359,16 @@ class InterpretationController extends Notifier<InterpretationState> {
         }
       } else {
         try {
-          content = await _generateIfPossible(context, mode, token);
+          content = await contentService.generateIfPossible(
+            context: context,
+            mode: mode,
+            cancelToken: token,
+          );
         } catch (error) {
-          final saved = await _loadSavedInterpretationOrEmpty(context, token);
+          final saved = await contentService.loadSavedOrEmpty(
+            context: context,
+            cancelToken: token,
+          );
           if (saved.isEmpty) rethrow;
           content = saved;
           contentWarning = _contentFallbackMessage(error);
@@ -334,6 +382,7 @@ class InterpretationController extends Notifier<InterpretationState> {
           ...state.contentByMode,
           mode: content,
         }),
+        contentRevision: state.contentRevision + 1,
         isLoadingInterpretation: false,
         contentError: contentWarning,
         clearContentError: contentWarning == null,
@@ -344,42 +393,6 @@ class InterpretationController extends Notifier<InterpretationState> {
     } on InterpretationException catch (error) {
       if (activeSession != _session) return;
       _setTaskError(error.message, interpretation: true);
-    }
-  }
-
-  Future<InterpretationData> _generate(
-    InterpretationChartContext context,
-    InterpretationMode mode,
-    CancelToken token,
-  ) => ref
-      .read(interpretationRepositoryProvider)
-      .generate(chartData: context.chartData, mode: mode, cancelToken: token);
-
-  Future<InterpretationData> _generateIfPossible(
-    InterpretationChartContext context,
-    InterpretationMode mode,
-    CancelToken token,
-  ) {
-    if (context.chartData.isEmpty) {
-      return Future.value(const InterpretationData());
-    }
-    return _generate(context, mode, token);
-  }
-
-  Future<InterpretationData> _loadSavedInterpretationOrEmpty(
-    InterpretationChartContext context,
-    CancelToken token,
-  ) async {
-    if (!context.isSaved) return const InterpretationData();
-    try {
-      return await ref
-          .read(interpretationRepositoryProvider)
-          .getSavedInterpretation(
-            chartId: context.chartId!,
-            cancelToken: token,
-          );
-    } catch (_) {
-      return const InterpretationData();
     }
   }
 
@@ -510,7 +523,10 @@ class InterpretationController extends Notifier<InterpretationState> {
             .read(chartRepositoryProvider)
             .getChartDetail(fallback);
         savedSummary = detail.summary;
-        savedChartData = _mergeChartData(context.chartData, detail.chartData);
+        savedChartData = _chartSessions.mergeChartData(
+          context.chartData,
+          detail.chartData,
+        );
       } on ChartException {
         // Việc lưu đã thành công. Giữ dữ liệu vừa lập làm fallback; lần mở
         // sau từ danh sách lá số vẫn tải lại bản chuẩn hóa từ backend.
@@ -598,15 +614,24 @@ class InterpretationController extends Notifier<InterpretationState> {
       } catch (_) {
         // Giao dịch đã được POST thành công; lỗi refresh số dư không đổi kết quả.
       }
-      final permissions = await _waitForUnlockPermissions([
+      final permissionPoll = await _waitForUnlockPermissions([
         key,
       ], session: session);
       if (!_isCurrent(session, token)) return result;
-      if (permissions?.contains(key) == true) {
-        _setUnlockStatuses([key], UnlockStatus.unlocked, clearError: true);
+      if (permissionPoll?.permissions.contains(key) == true) {
         _invalidateSharedModeContent(mode);
         await loadInterpretation(force: true);
+        if (!_isCurrent(session, token)) return result;
+        _publishPermissionPoll(context.chartId!, permissionPoll!);
+        _setUnlockStatuses([key], UnlockStatus.unlocked, clearError: true);
+        await loadSections(
+          session: session,
+          preserveConfirmedPermissions: true,
+        );
       } else {
+        if (permissionPoll != null) {
+          _publishPermissionPoll(context.chartId!, permissionPoll);
+        }
         _setUnlockStatuses(
           [key],
           UnlockStatus.syncing,
@@ -727,22 +752,34 @@ class InterpretationController extends Notifier<InterpretationState> {
       } catch (_) {
         // Giao dịch đã được POST thành công; lỗi refresh số dư không đổi kết quả.
       }
-      final permissions = await _waitForUnlockPermissions(
+      final permissionPoll = await _waitForUnlockPermissions(
         keys,
         session: session,
       );
       if (!_isCurrent(session, token)) return result;
       final unresolved = keys
-          .where((key) => permissions?.contains(key) != true)
+          .where((key) => permissionPoll?.permissions.contains(key) != true)
           .toList(growable: false);
       final resolved = keys
-          .where((key) => permissions?.contains(key) == true)
+          .where((key) => permissionPoll?.permissions.contains(key) == true)
           .toList(growable: false);
-      _setUnlockStatuses(resolved, UnlockStatus.unlocked);
-      if (unresolved.isEmpty) {
-        state = state.copyWith(clearUnlockError: true);
+      if (resolved.isNotEmpty) {
         _invalidateSharedModeContent(mode);
         await loadInterpretation(force: true);
+        if (!_isCurrent(session, token)) return result;
+      }
+      if (permissionPoll != null) {
+        _publishPermissionPoll(context.chartId!, permissionPoll);
+      }
+      _setUnlockStatuses(resolved, UnlockStatus.unlocked);
+      if (resolved.isNotEmpty) {
+        await loadSections(
+          session: session,
+          preserveConfirmedPermissions: true,
+        );
+      }
+      if (unresolved.isEmpty) {
+        state = state.copyWith(clearUnlockError: true);
       } else {
         _setUnlockStatuses(
           unresolved,
@@ -777,27 +814,48 @@ class InterpretationController extends Notifier<InterpretationState> {
     }
   }
 
-  Future<Set<ReadingSectionKey>?> _waitForUnlockPermissions(
+  Future<ReadingUnlockPollResult?> _waitForUnlockPermissions(
     Iterable<ReadingSectionKey> expectedKeys, {
     required int session,
   }) async {
-    final expected = expectedKeys.toSet();
-    Set<ReadingSectionKey>? permissions;
-    const retryDelays = <Duration>[
-      Duration.zero,
-      Duration(milliseconds: 350),
-      Duration(milliseconds: 900),
-    ];
-    for (final delay in retryDelays) {
-      if (delay > Duration.zero) await Future<void>.delayed(delay);
-      if (session != _session) return permissions;
-      await loadSections(session: session);
-      permissions = state.canonicalUnlockedKeys;
-      if (expected.every(permissions.contains)) {
-        return permissions;
-      }
-    }
-    return permissions;
+    final chartId = state.context?.chartId;
+    final unlockToken = _unlockToken;
+    if (chartId == null || unlockToken == null) return null;
+    final result =
+        await ReadingUnlockService(
+          ref.read(interpretationRepositoryProvider),
+        ).waitForPermissions(
+          chartId: chartId,
+          expectedKeys: expectedKeys.toSet(),
+          shareAcrossModes: state.catalog?.pricing.buyOneGetBothModes == true,
+          isCurrent: () => session == _session && !unlockToken.isCancelled,
+          cancelToken: unlockToken,
+        );
+    if (session != _session) return result;
+    return result;
+  }
+
+  void _publishPermissionPoll(String chartId, ReadingUnlockPollResult result) {
+    final permissions = result.permissions;
+    _debugLegacyUnlocks(
+      ReadingUnlockSnapshot(
+        canonicalKeys: permissions,
+        legacyKeys: result.legacyKeys,
+      ),
+    );
+    _cachePermissions(chartId, permissions);
+    final statuses = _catalogs.reconcileStatuses(
+      state.unlockStatusBySection,
+      permissions,
+    );
+    _unlockStatusCache[chartId] = {...statuses};
+    state = state.copyWith(
+      canonicalUnlockedKeys: permissions,
+      legacyUnlockKeys: result.legacyKeys,
+      unlockStatusBySection: statuses,
+      isLoadingUnlocks: false,
+      clearPermissionError: true,
+    );
   }
 
   void _setTaskError(
@@ -842,33 +900,6 @@ class InterpretationController extends Notifier<InterpretationState> {
         'cá nhân đầy đủ. $detail';
   }
 
-  static Map<String, dynamic> _mergeChartData(
-    Map<String, dynamic> cached,
-    Map<String, dynamic> refreshed,
-  ) {
-    if (cached.isEmpty) return refreshed;
-    if (refreshed.isEmpty) return cached;
-    final result = <String, dynamic>{...cached, ...refreshed};
-    for (final key in const ['palaces', 'generalReading', 'general_reading']) {
-      final cachedValue = cached[key];
-      final refreshedValue = refreshed[key];
-      if (cachedValue is Map && refreshedValue is Map) {
-        result[key] = <String, dynamic>{
-          ...Map<String, dynamic>.from(cachedValue),
-          ...Map<String, dynamic>.from(refreshedValue),
-        };
-      } else if (_isEmptyCollection(refreshedValue) && cachedValue != null) {
-        result[key] = cachedValue;
-      }
-    }
-    return Map.unmodifiable(result);
-  }
-
-  static bool _isEmptyCollection(Object? value) =>
-      value == null ||
-      (value is Map && value.isEmpty) ||
-      (value is List && value.isEmpty);
-
   ReadingSectionKey? _sectionKey(ReadingSection section) {
     final chartId = state.context?.chartId;
     if (chartId == null) return null;
@@ -909,24 +940,6 @@ class InterpretationController extends Notifier<InterpretationState> {
     );
   }
 
-  static Map<String, UnlockStatus> _reconcileUnlockStatuses(
-    Map<String, UnlockStatus> current,
-    Set<ReadingSectionKey> permissions,
-  ) {
-    final result = <String, UnlockStatus>{...current};
-    final grantedValues = permissions.map((key) => key.value).toSet();
-    for (final entry in current.entries) {
-      if (entry.value == UnlockStatus.unlocked &&
-          !grantedValues.contains(entry.key)) {
-        result[entry.key] = UnlockStatus.idle;
-      }
-    }
-    for (final key in permissions) {
-      result[key.value] = UnlockStatus.unlocked;
-    }
-    return Map.unmodifiable(result);
-  }
-
   Map<InterpretationMode, InterpretationData> _cachedContent(String chartId) =>
       Map.unmodifiable(_contentCache[chartId] ?? const {});
 
@@ -963,20 +976,7 @@ class InterpretationController extends Notifier<InterpretationState> {
     if (state.catalog?.pricing.buyOneGetBothModes != true) {
       return permissions;
     }
-    final shared = <ReadingSectionKey>{};
-    for (final key in permissions) {
-      for (final mode in InterpretationMode.values) {
-        shared.add(
-          ReadingSectionKey(
-            chartId: key.chartId,
-            mode: mode,
-            groupSlug: key.groupSlug,
-            sectionSlug: key.sectionSlug,
-          ),
-        );
-      }
-    }
-    return Set.unmodifiable(shared);
+    return ReadingUnlockService.sharePermissionsAcrossModes(permissions);
   }
 
   void _invalidateSharedModeContent(InterpretationMode purchasedMode) {
@@ -1005,32 +1005,6 @@ class InterpretationController extends Notifier<InterpretationState> {
       '[Interpretation] Ignored ${snapshot.legacyKeys.length} legacy unlock '
       'keys: $counts',
     );
-  }
-
-  Set<ReadingSectionKey> _permissionsFromCatalog(
-    String chartId,
-    ReadingCatalog catalog,
-  ) {
-    final result = <ReadingSectionKey>{};
-    final modes = catalog.pricing.buyOneGetBothModes
-        ? InterpretationMode.values
-        : <InterpretationMode>[state.mode];
-    for (final section in catalog.sections) {
-      if (!catalog.allUnlocked && !section.isUnlocked && !section.isFree) {
-        continue;
-      }
-      for (final mode in modes) {
-        result.add(
-          ReadingSectionKey(
-            chartId: chartId,
-            mode: mode,
-            groupSlug: section.groupSlug,
-            sectionSlug: section.sectionSlug,
-          ),
-        );
-      }
-    }
-    return Set.unmodifiable(result);
   }
 }
 
