@@ -48,6 +48,8 @@ class WalletPage extends ConsumerWidget {
               sliver: SliverList.list(
                 children: [
                   RepaintBoundary(child: _BalancePanel(balance: info?.balance)),
+                  const SizedBox(height: 10),
+                  const RepaintBoundary(child: _WalletActivityBar()),
                   const SizedBox(height: 17),
                   const _SectionTitle(
                     icon: Icons.auto_awesome_rounded,
@@ -235,52 +237,123 @@ class _BalancePanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 7),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => context.push(AppRoute.paymentOrders),
-                  icon: const Icon(Icons.receipt_long_rounded, size: 15),
-                  label: const Text('LỊCH SỬ ĐƠN THANH TOÁN'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF8A5A12),
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
               const Text(
                 'Tài khoản: Thành viên Tử Vi AI',
                 style: TextStyle(color: Color(0xFF735B3C), fontSize: 11),
               ),
               const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(
-                    child: _GoldButton(
-                      icon: Icons.monetization_on_outlined,
-                      label: 'NẠP THÊM XU',
-                      onTap: () => context.push(AppRoute.coinPackages),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _GoldButton(
-                      dark: true,
-                      icon: Icons.history_rounded,
-                      label: 'NHẬT KÝ XU',
-                      onTap: () => context.push(AppRoute.coinTransactions),
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: _GoldButton(
+                  icon: Icons.monetization_on_outlined,
+                  label: 'NẠP THÊM XU',
+                  onTap: () => context.push(AppRoute.coinPackages),
+                ),
               ),
             ],
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _WalletActivityBar extends StatelessWidget {
+  const _WalletActivityBar();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: const Color(0xE0081625),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFF9A7427), width: .9),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: _WalletActivityItem(
+            icon: Icons.swap_vert_circle_outlined,
+            title: 'Biến động Xu',
+            subtitle: 'Thu và chi',
+            onTap: () => context.push(AppRoute.coinTransactions),
+          ),
+        ),
+        Container(width: 1, height: 38, color: const Color(0x665E4824)),
+        Expanded(
+          child: _WalletActivityItem(
+            icon: Icons.receipt_long_rounded,
+            title: 'Đơn thanh toán',
+            subtitle: 'Nạp Xu và hội viên',
+            onTap: () => context.push(AppRoute.paymentOrders),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _WalletActivityItem extends StatelessWidget {
+  const _WalletActivityItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    borderRadius: BorderRadius.circular(10),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+        child: Row(
+          children: [
+            Icon(icon, size: 24, color: const Color(0xFFFFD66B)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFFFE3A0),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 8.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 17,
+              color: Color(0xFFB99242),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }
@@ -438,6 +511,12 @@ class _CheckInPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = state.activeActions.contains('checkin');
+    final dayCount = info.checkInDays.length;
+    final currentDay = dayCount == 0
+        ? 0
+        : (info.hasCheckedInToday ? info.streakDays : info.streakDays + 1)
+              .clamp(1, dayCount)
+              .toInt();
     return _MysticPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,6 +560,7 @@ class _CheckInPanel extends ConsumerWidget {
                     (day) => _CheckInDayTile(
                       day: day,
                       completed: day.day <= info.streakDays,
+                      isCurrentDay: day.day == currentDay,
                     ),
                   )
                   .toList(),
@@ -510,53 +590,66 @@ class _CheckInPanel extends ConsumerWidget {
 }
 
 class _CheckInDayTile extends StatelessWidget {
-  const _CheckInDayTile({required this.day, required this.completed});
+  const _CheckInDayTile({
+    required this.day,
+    required this.completed,
+    required this.isCurrentDay,
+  });
   final CheckInDay day;
   final bool completed;
+  final bool isCurrentDay;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 55,
-    margin: const EdgeInsets.only(right: 6),
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    decoration: BoxDecoration(
-      color: completed ? const Color(0xFF0D5A58) : const Color(0xFFF8E8BE),
-      border: Border.all(color: _gold),
-      borderRadius: BorderRadius.circular(10),
-      boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
-    ),
-    child: Column(
-      children: [
-        Text(
-          'Ngày ${day.day}',
-          style: TextStyle(
-            color: completed ? Colors.white : _ink,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) {
+    final highlighted = completed || isCurrentDay;
+    return Container(
+      width: 55,
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: highlighted ? const Color(0xFF0D5A58) : const Color(0xFFF8E8BE),
+        border: Border.all(
+          color: isCurrentDay ? const Color(0xFF55E8C9) : _gold,
+          width: isCurrentDay ? 1.5 : 1,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Ngày ${day.day}',
+            style: TextStyle(
+              color: highlighted ? Colors.white : _ink,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 5),
-        Icon(
-          completed
-              ? Icons.check_circle
-              : day.day == 7
-              ? Icons.card_giftcard_rounded
-              : Icons.monetization_on,
-          color: completed ? const Color(0xFF45E1C3) : const Color(0xFFE6A71D),
-          size: 20,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '+${day.rewardCoins} Xu',
-          style: TextStyle(
-            color: completed ? const Color(0xFF48F0D3) : _darkGold,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
+          const SizedBox(height: 5),
+          Icon(
+            completed
+                ? Icons.check_circle
+                : day.day == 7
+                ? Icons.card_giftcard_rounded
+                : Icons.monetization_on,
+            color: highlighted
+                ? const Color(0xFF45E1C3)
+                : const Color(0xFFE6A71D),
+            size: 20,
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 4),
+          Text(
+            '+${day.rewardCoins} Xu',
+            style: TextStyle(
+              color: highlighted ? const Color(0xFF48F0D3) : _darkGold,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MissionPanel extends StatelessWidget {
@@ -797,12 +890,10 @@ class _GoldButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.dark = false,
   });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
-  final bool dark;
   @override
   Widget build(BuildContext context) => FilledButton.icon(
     onPressed: onTap,
@@ -818,7 +909,7 @@ class _GoldButton extends StatelessWidget {
       ),
     ),
     style: FilledButton.styleFrom(
-      backgroundColor: dark ? const Color(0xFF4B2E12) : const Color(0xFFB4780B),
+      backgroundColor: const Color(0xFFB4780B),
       foregroundColor: const Color(0xFFFFE9AD),
       disabledBackgroundColor: const Color(0xFF9A8C72),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),

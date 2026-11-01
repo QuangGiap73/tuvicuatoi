@@ -15,7 +15,6 @@ import 'widgets/top_up_header.dart';
 import 'widgets/top_up_tabs.dart';
 
 const _gold = Color(0xFFE5BA50);
-const _paper = Color(0xFFF7E8C2);
 const _ink = Color(0xFF442911);
 
 class CoinPackagesPage extends ConsumerWidget {
@@ -155,12 +154,6 @@ class _TopUpHeader extends StatelessWidget {
           Expanded(child: Divider(color: Color(0x558F6A22))),
         ],
       ),
-      const SizedBox(height: 8),
-      const Text(
-        'Nạp Xu để mở khóa luận giải, hỏi đáp AI\nhoặc nâng cấp Hội Viên để nhận thêm đặc quyền',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
-      ),
     ],
   );
 }
@@ -247,35 +240,51 @@ class _TabButton extends StatelessWidget {
 class _CoinPackageSection extends StatelessWidget {
   const _CoinPackageSection({required this.packages});
   final List<CoinPackage> packages;
+
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const _SectionHeading(
-        icon: Icons.monetization_on_rounded,
-        title: 'Chọn gói Xu phù hợp với bạn',
-        description: 'Giá và số Xu do hệ thống cung cấp',
-      ),
-      const SizedBox(height: 12),
-      if (packages.isEmpty)
-        const _EmptyPanel(text: 'Backend chưa cung cấp gói Xu hợp lệ.')
-      else
-        SizedBox(
-          // The package name may wrap to two lines. Keep enough vertical room
-          // for the bonus and price rows instead of relying on a tight card.
-          height: 344,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            cacheExtent: 500,
-            itemCount: packages.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (_, index) => RepaintBoundary(
-              child: _CoinPackageCard(package: packages[index]),
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final sortedPackages = [...packages]
+      ..sort((left, right) {
+        final byCoins = left.totalCoins.compareTo(right.totalCoins);
+        return byCoins != 0 ? byCoins : left.price.compareTo(right.price);
+      });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeading(
+          icon: Icons.monetization_on_rounded,
+          title: 'Chọn gói Xu phù hợp với bạn',
+          description: 'Giá và số Xu do hệ thống cung cấp',
         ),
-    ],
-  );
+        const SizedBox(height: 12),
+        if (sortedPackages.isEmpty)
+          const _EmptyPanel(text: 'Backend chưa cung cấp gói Xu hợp lệ.')
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 6.0;
+              final cardWidth = (constraints.maxWidth - spacing * 2) / 3;
+              return Wrap(
+                alignment: WrapAlignment.center,
+                runAlignment: WrapAlignment.center,
+                spacing: spacing,
+                runSpacing: 8,
+                children: [
+                  for (final package in sortedPackages)
+                    SizedBox(
+                      width: cardWidth,
+                      height: 258,
+                      child: RepaintBoundary(
+                        child: _CoinPackageCard(package: package),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+      ],
+    );
+  }
 }
 
 class _CoinPackageCard extends ConsumerWidget {
@@ -284,41 +293,45 @@ class _CoinPackageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = ref.watch(productCreatingProvider(package.id));
-    final availableWidth = MediaQuery.sizeOf(context).width - 28;
-    final cardWidth = ((availableWidth - 10) / 2).clamp(156.0, 180.0);
     return SizedBox(
-      width: cardWidth,
+      width: double.infinity,
       child: Stack(
         children: [
           Positioned.fill(
             child: Image.asset(
               MysticAssets.walletFrame,
               fit: BoxFit.fill,
-              cacheWidth: 500,
+              cacheWidth: 320,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
+            padding: const EdgeInsets.fromLTRB(9, 14, 9, 11),
             child: Column(
               children: [
-                if (package.badgeLabel.isNotEmpty)
-                  _Badge(label: package.badgeLabel),
-                const SizedBox(height: 5),
+                SizedBox(
+                  height: 22,
+                  child: package.badgeLabel.isNotEmpty
+                      ? _Badge(label: package.badgeLabel)
+                      : null,
+                ),
+                const SizedBox(height: 4),
                 Text(
                   package.name.toUpperCase(),
                   maxLines: 2,
                   textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _ink,
                     fontFamily: 'serif',
-                    fontSize: 14,
+                    fontSize: 11,
+                    height: 1.12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 5),
                 Container(
-                  width: 72,
-                  height: 72,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: const Color(0x55E0AF3B),
                     shape: BoxShape.circle,
@@ -331,17 +344,21 @@ class _CoinPackageCard extends ConsumerWidget {
                         ? Icons.auto_awesome
                         : Icons.savings_rounded,
                     color: const Color(0xFF9A5C08),
-                    size: 38,
+                    size: 27,
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  '${_number(package.totalCoins)} Xu',
-                  style: const TextStyle(
-                    color: Color(0xFF612F18),
-                    fontFamily: 'serif',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${_number(package.totalCoins)} Xu',
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Color(0xFF612F18),
+                      fontFamily: 'serif',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 if (package.bonusCoins > 0)
@@ -349,16 +366,16 @@ class _CoinPackageCard extends ConsumerWidget {
                     'Tặng ${_number(package.bonusCoins)} Xu',
                     style: const TextStyle(
                       color: Color(0xFF07836B),
-                      fontSize: 10,
+                      fontSize: 8,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                const SizedBox(height: 7),
-                _PriceLabel(
+                const SizedBox(height: 4),
+                _CompactPriceLabel(
                   price: package.price,
                   original: package.originalPrice,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 5),
                 SizedBox(
                   width: double.infinity,
                   child: _BuyButton(
@@ -384,9 +401,31 @@ class _CoinPackageCard extends ConsumerWidget {
   }
 }
 
-class _MembershipSection extends StatelessWidget {
+class _MembershipSection extends StatefulWidget {
   const _MembershipSection({required this.packages});
   final List<MembershipPackage> packages;
+
+  @override
+  State<_MembershipSection> createState() => _MembershipSectionState();
+}
+
+class _MembershipSectionState extends State<_MembershipSection> {
+  late final PageController _pageController;
+
+  List<MembershipPackage> get packages => widget.packages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: .88);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,13 +443,14 @@ class _MembershipSection extends StatelessWidget {
           // Benefits are supplied by the backend and may contain five rows.
           // A taller viewport prevents the action button from escaping the
           // decorative card on compact phones.
-          height: 410,
+          height: (MediaQuery.sizeOf(context).width * 1.42).clamp(470.0, 560.0),
           child: PageView.builder(
+            controller: _pageController,
             padEnds: true,
             itemCount: packages.length,
             physics: const PageScrollPhysics(),
             itemBuilder: (_, index) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 3),
               child: RepaintBoundary(
                 child: _MembershipCard(package: packages[index]),
               ),
@@ -427,32 +467,33 @@ class _MembershipCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = ref.watch(productCreatingProvider(package.id));
+    final premium = _isPremium(package);
     return SizedBox(
       width: double.infinity,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(13, 16, 13, 14),
+        // The Premium artwork has a larger dragon/phoenix crown and lanterns,
+        // so its readable paper area starts lower and is slightly narrower.
+        padding: premium
+            ? const EdgeInsets.fromLTRB(61, 122, 61, 80)
+            : package.isFree
+            ? const EdgeInsets.fromLTRB(52, 108, 52, 74)
+            : const EdgeInsets.fromLTRB(52, 108, 52, 74),
         decoration: BoxDecoration(
-          color: _paper,
-          border: Border.all(
-            color: package.isRecommended ? const Color(0xFFD33C28) : _gold,
-            width: package.isRecommended ? 2 : 1.2,
+          image: DecorationImage(
+            image: ResizeImage.resizeIfNeeded(
+              800,
+              null,
+              AssetImage(_frameFor(package)),
+            ),
+            fit: BoxFit.fill,
+            filterQuality: FilterQuality.medium,
           ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 8)],
         ),
         child: Column(
           children: [
-            if (package.badgeLabel.isNotEmpty)
-              _Badge(label: package.badgeLabel),
-            const SizedBox(height: 6),
-            Icon(
-              package.isRecommended
-                  ? Icons.workspace_premium
-                  : Icons.auto_awesome,
-              color: const Color(0xFFAE710D),
-              size: 32,
-            ),
-            const SizedBox(height: 5),
+            // The artwork already contains the tier emblem. Reserve its safe
+            // area instead of drawing another icon over the ornament.
+            SizedBox(height: premium ? 21 : 30),
             Text(
               package.name.toUpperCase(),
               maxLines: 2,
@@ -471,7 +512,11 @@ class _MembershipCard extends ConsumerWidget {
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF735C40), fontSize: 10),
+              style: const TextStyle(
+                color: Color(0xFF735C40),
+                fontSize: 9,
+                height: 1.25,
+              ),
             ),
             const SizedBox(height: 9),
             if (package.isFree)
@@ -497,40 +542,68 @@ class _MembershipCard extends ConsumerWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 10),
-            _Benefit(text: 'Lưu tối đa ${package.maxSavedCharts} lá số'),
-            _Benefit(text: '${package.aiDailyLimit} câu hỏi AI mỗi ngày'),
-            if (package.coinsGranted > 0)
-              _Benefit(text: 'Tặng ${_number(package.coinsGranted)} Xu'),
-            if (package.hasAiChatHistory)
-              const _Benefit(text: 'Lưu lịch sử AI Chat'),
-            if (package.hasPriorityServer)
-              const _Benefit(text: 'Ưu tiên máy chủ cao cấp'),
+            SizedBox(height: premium ? 12 : 14),
+            Padding(
+              padding: EdgeInsets.only(left: premium ? 7 : 12),
+              child: Column(
+                children: [
+                  _Benefit(text: 'Lưu tối đa ${package.maxSavedCharts} lá số'),
+                  _Benefit(text: '${package.aiDailyLimit} câu hỏi AI mỗi ngày'),
+                  if (package.coinsGranted > 0)
+                    _Benefit(text: 'Tặng ${_number(package.coinsGranted)} Xu'),
+                  if (package.hasAiChatHistory)
+                    const _Benefit(text: 'Lưu lịch sử AI Chat'),
+                  if (package.hasPriorityServer)
+                    const _Benefit(text: 'Ưu tiên máy chủ cao cấp'),
+                  if (package.hasPdfExport)
+                    const _Benefit(text: 'Xuất bản in và PDF tiêu chuẩn'),
+                ],
+              ),
+            ),
             const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: _BuyButton(
-                label: package.isFree
-                    ? 'GÓI HIỆN TẠI'
-                    : busy
-                    ? 'ĐANG TẠO ĐƠN...'
-                    : 'XEM CHI TIẾT',
-                onTap: package.isFree || busy
-                    ? null
-                    : () => _createOrder(
-                        context,
-                        ref,
-                        productId: package.id,
-                        productType: 'PREMIUM',
-                        productName: package.name,
-                        amount: package.price,
-                      ),
+            Transform.translate(
+              offset: const Offset(0, -18),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: _BuyButton(
+                    label: package.isFree
+                        ? 'GÓI HIỆN TẠI'
+                        : busy
+                        ? 'ĐANG TẠO ĐƠN...'
+                        : 'XEM CHI TIẾT',
+                    onTap: package.isFree || busy
+                        ? null
+                        : () => _createOrder(
+                            context,
+                            ref,
+                            productId: package.id,
+                            productType: 'PREMIUM',
+                            productName: package.name,
+                            amount: package.price,
+                          ),
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  static String _frameFor(MembershipPackage package) {
+    if (package.isFree) return MysticAssets.membershipFreeFrame;
+    if (_isPremium(package)) {
+      return MysticAssets.membershipPremiumFrame;
+    }
+    return MysticAssets.membershipBasicFrame;
+  }
+
+  static bool _isPremium(MembershipPackage package) {
+    final identity = '${package.code} ${package.name}'.toLowerCase();
+    return package.isRecommended || identity.contains('premium');
   }
 }
 
@@ -595,29 +668,37 @@ class _Badge extends StatelessWidget {
   );
 }
 
-class _PriceLabel extends StatelessWidget {
-  const _PriceLabel({required this.price, required this.original});
+class _CompactPriceLabel extends StatelessWidget {
+  const _CompactPriceLabel({required this.price, required this.original});
+
   final double price;
   final double original;
+
   @override
   Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
     children: [
       if (original > price)
         Text(
           _money(original),
+          maxLines: 1,
           style: const TextStyle(
             color: Color(0xFF927D5E),
-            fontSize: 9,
+            fontSize: 7.5,
             decoration: TextDecoration.lineThrough,
           ),
         ),
-      Text(
-        _money(price),
-        style: const TextStyle(
-          color: _ink,
-          fontFamily: 'serif',
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          _money(price),
+          maxLines: 1,
+          style: const TextStyle(
+            color: _ink,
+            fontFamily: 'serif',
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
     ],

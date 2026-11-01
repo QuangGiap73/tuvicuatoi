@@ -40,7 +40,7 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
       (_, authenticated) {
         _authenticated = authenticated;
         if (authenticated && !_reduceMotion) {
-          _pulseController.repeat();
+          _startPulse();
         } else {
           _pulseController.stop();
         }
@@ -55,7 +55,7 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     if (_reduceMotion == reduceMotion) {
       if (_authenticated && !_reduceMotion && !_pulseController.isAnimating) {
-        _pulseController.repeat();
+        _startPulse();
       }
       return;
     }
@@ -65,7 +65,7 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
         ..stop()
         ..value = 0;
     } else if (_authenticated) {
-      _pulseController.repeat();
+      _startPulse();
     }
   }
 
@@ -73,10 +73,21 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_reduceMotion) return;
     if (state == AppLifecycleState.resumed && _authenticated) {
-      _pulseController.repeat();
+      _startPulse();
     } else {
       _pulseController.stop();
     }
+  }
+
+  void _startPulse() {
+    if (_reduceMotion || !_authenticated || _pulseController.isAnimating) {
+      return;
+    }
+    // A short attention cue is enough. Keeping the blurred CustomPainter at
+    // 60 FPS forever costs GPU time on every screen and can heat the device.
+    _pulseController.forward(from: 0).whenCompleteOrCancel(() {
+      if (mounted) _pulseController.value = 0;
+    });
   }
 
   @override

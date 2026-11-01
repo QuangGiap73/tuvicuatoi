@@ -77,12 +77,6 @@ class TopUpHeader extends StatelessWidget {
           Expanded(child: Divider(color: Color(0x558F6A22))),
         ],
       ),
-      const SizedBox(height: 8),
-      const Text(
-        'Nạp Xu để mở khóa luận giải, hỏi đáp AI\nhoặc nâng cấp Hội Viên để nhận thêm đặc quyền',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
-      ),
     ],
   );
 }
