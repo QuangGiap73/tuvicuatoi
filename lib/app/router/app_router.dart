@@ -7,6 +7,8 @@ import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/welcome_page.dart';
 import '../../features/ai_chat/presentation/ai_chat_page.dart';
+import '../../features/articles/presentation/article_detail_page.dart';
+import '../../features/articles/presentation/articles_page.dart';
 import '../../features/daily_fortune/presentation/daily_fortune_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/horoscope/presentation/horoscope_page.dart';
@@ -33,6 +35,7 @@ abstract final class AppRoute {
   static const myCharts = '/profile/charts';
   static const chat = '/ai-chat';
   static const dailyFortune = '/daily-fortune';
+  static const articles = '/articles';
   static const wallet = '/wallet';
   static const coinPackages = '/wallet/packages';
   static const coinTransactions = '/wallet/transactions';
@@ -98,6 +101,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'daily-fortune',
                     builder: (_, _) => const DailyFortunePage(),
+                  ),
+                  GoRoute(
+                    path: 'articles',
+                    builder: (_, state) => ArticlesPage(
+                      missionCode: state.uri.queryParameters['missionCode'],
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: ':slug',
+                        builder: (_, state) => ArticleDetailPage(
+                          slug: state.pathParameters['slug'] ?? '',
+                          missionCode: state.uri.queryParameters['missionCode'],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

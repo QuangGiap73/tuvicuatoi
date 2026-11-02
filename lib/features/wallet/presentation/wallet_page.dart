@@ -971,6 +971,12 @@ Future<void> _missionAction(
     context.go(AppRoute.profile);
     return;
   }
+  if (mission.actionType == 'READ_NEWS') {
+    context.go(
+      '${AppRoute.articles}?missionCode=${Uri.encodeQueryComponent(mission.code)}',
+    );
+    return;
+  }
   final uri = Uri.tryParse(mission.targetUrl);
   if (uri == null ||
       !await launchUrl(uri, mode: LaunchMode.externalApplication)) {

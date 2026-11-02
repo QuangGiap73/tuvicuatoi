@@ -94,10 +94,14 @@ class WalletController extends Notifier<WalletState> {
       });
 
   Future<void> recordMissionAction(CoinMission mission) async {
+    await recordMissionActionByCode(mission.code);
+  }
+
+  Future<void> recordMissionActionByCode(String missionCode) async {
+    final code = missionCode.trim();
+    if (code.isEmpty) return;
     try {
-      await ref
-          .read(walletRepositoryProvider)
-          .recordMissionAction(mission.code);
+      await ref.read(walletRepositoryProvider).recordMissionAction(code);
       await refresh(quietly: true);
     } on WalletException catch (error) {
       state = state.copyWith(error: error.message);

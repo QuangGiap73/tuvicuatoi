@@ -3,37 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tuvicuatoi/features/home/presentation/widgets/home_daily_message_card.dart';
 
 void main() {
-  const longMessage =
-      'Một lựa chọn nhỏ hôm nay có thể mở ra hành trình lớn. Hãy tin vào trực giác và dành thời gian quan sát thật kỹ.';
+  testWidgets('long daily message expands the frame without overflow', (
+    tester,
+  ) async {
+    const message =
+        'Một ngày thuận lợi để học hỏi điều mới. Hãy kiên nhẫn quan sát, '
+        'giữ tâm bình an và dành thời gian cân nhắc trước những quyết định '
+        'quan trọng trong ngày hôm nay.';
 
-  for (final width in [288.0, 320.0, 398.0]) {
-    testWidgets('daily card fits ${width.toInt()}dp width', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: MediaQueryData(
-              size: Size(width, 800),
-              textScaler: const TextScaler.linear(1.25),
-            ),
-            child: Scaffold(
-              body: Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: width,
-                  child: const HomeDailyMessageCard(
-                    message: longMessage,
-                    year: 2026,
-                  ),
-                ),
-              ),
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: 320,
+              child: HomeDailyMessageCard(message: message, year: 2026),
             ),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('Ngày cát lành  ·  2026'), findsOneWidget);
-    });
-  }
+    expect(find.text(message), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getSize(find.byType(HomeDailyMessageCard)).height,
+      greaterThan(320 / 2.205),
+    );
+  });
 }

@@ -73,7 +73,7 @@ class HomePage extends ConsumerWidget {
             onChartPressed: () => context.go(AppRoute.horoscope),
             onTodayPressed: () => context.go(AppRoute.dailyFortune),
             onChatPressed: () => context.go(AppRoute.chat),
-            onArticlesPressed: () => _showComingSoon(context, 'Bài viết'),
+            onArticlesPressed: () => context.push(AppRoute.articles),
             onViewAllPressed: () => _showComingSoon(context, 'Tính năng'),
           ),
         ],
