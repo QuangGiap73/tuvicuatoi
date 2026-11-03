@@ -14,19 +14,22 @@ import 'widgets/ai_chat_message_bubble.dart';
 import 'widgets/chart_picker_dialog.dart';
 
 class AiChatPage extends ConsumerStatefulWidget {
-  const AiChatPage({super.key});
+  const AiChatPage({this.initialPrompt, super.key});
+
+  final String? initialPrompt;
 
   @override
   ConsumerState<AiChatPage> createState() => _AiChatPageState();
 }
 
 class _AiChatPageState extends ConsumerState<AiChatPage> {
-  final _textController = TextEditingController();
+  late final TextEditingController _textController;
   final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _textController = TextEditingController(text: widget.initialPrompt ?? '');
     // Tự động cuộn xuống cuối khi vừa mở màn hình
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _scrollToBottom(immediate: true),

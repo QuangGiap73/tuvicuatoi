@@ -14,90 +14,158 @@ void main() {
     repository = ApiDailyFortuneRepository(dio);
   });
 
-  test(
-    'loads the documented calendar fields without client calculations',
-    () async {
-      adapter.onPost(
-        '/charts/calculate/',
-        (server) => server.reply(200, {
-          'success': true,
-          'data': {
-            'info': {
-              'lunar_date': '14/9 (Âm lịch)',
-              'can_chi_year': 'Bính Ngọ',
-              'can_chi_month': 'Mậu Tuất',
-              'can_chi_day': 'Canh Ngọ',
-              'can_chi_hour': 'Bính Tý',
-              'menh_element': 'Lộ Bàng Thổ',
-            },
-          },
-        }),
-        data: {
-          'name': 'Lịch ngày',
-          'gender': 'Nam',
-          'day': 23,
-          'month': 10,
-          'year': 2026,
-          'hour': 12,
+  test('GET loads the documented public daily calendar', () async {
+    adapter.onGet(
+      '/tuvi/daily-fortune',
+      (server) => server.reply(200, _response()),
+      queryParameters: {'date': '2026-10-29'},
+    );
+    final result = await repository.getCalendar(date: DateTime(2026, 10, 29));
+    expect(result.canChiDay, 'Bính Tý');
+    expect(result.dayOfficer, 'Mãn');
+    expect(result.hours, hasLength(2));
+    expect(result.personal, isNull);
+  });
+
+  test('POST parses personal fortune and prefers the data envelope', () async {
+    final envelope = Map<String, dynamic>.from(_response()['data'] as Map);
+    envelope['personalFortune'] = {
+      'chartName': 'Nguyễn Văn A',
+      'birthYearCanChi': 'Ất Hợi',
+      'birthBranch': 'Hợi',
+      'destinyNayin': 'Sơn Đầu Hỏa',
+      'destinyElement': 'Hỏa',
+      'palaceName': 'Phụ Mẫu',
+      'palaceBranch': 'Ngọ',
+      'majorStars': ['Tử Vi'],
+      'dailyStars': ['Lưu Văn Khúc'],
+      'branchRelationType': 'Bình Hòa',
+      'branchRelationDesc': 'Vận trình ổn định.',
+      'elementRelationType': 'Khắc Nhập',
+      'elementRelationDesc': 'Nên thận trọng.',
+      'mutagenStars': {
+        'loc': {'star': 'Thiên Đồng', 'palace': 'Tài Bạch'},
+      },
+      'overallScore': 62,
+      'overallRating': 'Bình Hòa An Ổn',
+      'careerAdvice': 'Công việc thuận lợi.',
+      'wealthAdvice': 'Tài chính ổn định.',
+      'loveAdvice': 'Gia đình hòa thuận.',
+      'healthAdvice': 'Nên nghỉ ngơi.',
+      'luckyColor': 'Xanh lá',
+      'luckyColorReason': 'Bồi đắp sinh khí.',
+      'luckyDirection': 'Tây Nam',
+      'personalizedHours': [
+        {
+          'branch': 'Dần',
+          'time': '03:00 - 04:59',
+          'isAuspicious': false,
+          'starName': 'Hắc Đạo',
+          'affinityType': 'Lục Hợp',
+          'affinityBadge': 'Quý nhân tuổi Hợi',
         },
-      );
-
-      final result = await repository.getForDate(date: DateTime(2026, 10, 23));
-
-      expect(result.canChiHour, 'Bính Tý');
-      expect(result.dayOfficer, isNull);
-      expect(result.joyDirection, isNull);
-    },
-  );
-
-  test('requests a personalized day reading with the selected chart', () async {
+      ],
+    };
+    envelope['aiSuggestedPrompt'] = 'Phân tích ngày hôm nay.';
     adapter.onPost(
-      '/tuvi/read',
-      (server) => server.reply(200, {
-        'success': true,
-        'data': {
-          'dailyFortune': {
-            'dayOfficer': {'name': 'Thành', 'rating': 'Hoàng Đạo'},
-            'travelDirections': {'hyThan': 'Tây Bắc', 'taiThan': 'Tây Nam'},
-            'dailyPalace': {'name': 'Huynh Đệ'},
-            'fortuneScore': 4.6,
-            'auspiciousHours': ['Tý 23:00–00:59'],
-            'inauspiciousHours': ['Dần 03:00–04:59'],
-            'shouldDo': ['Khai trương'],
-            'shouldAvoid': ['Kiện tụng'],
-          },
-          'overview': {
-            'personality': 'Ngày thuận lợi.',
-            'career': 'Công việc hanh thông.',
-            'wealth': 'Tài lộc ổn định.',
-            'relationships': 'Tình cảm hài hòa.',
-            'health': 'Sức khỏe tốt.',
-          },
-          'advice': 'Giữ nhịp độ ổn định.',
-        },
-      }),
+      '/tuvi/daily-fortune',
+      (server) => server.reply(200, {'success': true, 'data': envelope}),
       data: {
-        'type': 'full',
-        'mode': 'doi-thuong',
-        'year': 2026,
-        'month': 10,
-        'day': 23,
-        'chart': {'id': 'chart-1'},
+        'date': '2026-10-29',
+        'chartData': {'id': 'chart-1'},
       },
     );
 
-    final result = await repository.getReading(
-      date: DateTime(2026, 10, 23),
+    final result = await repository.getPersonalized(
+      date: DateTime(2026, 10, 29),
       chartData: const {'id': 'chart-1'},
     );
+    expect(result.personal?.overallScore, 62);
+    expect(result.career, 'Công việc thuận lợi.');
+    expect(result.wealth, 'Tài chính ổn định.');
+    expect(result.love, 'Gia đình hòa thuận.');
+    expect(result.health, 'Nên nghỉ ngơi.');
+    expect(result.personal?.luckyColor, 'Xanh lá');
+    expect(result.personal?.luckyDirection, 'Tây Nam');
+    expect(result.personal?.mutagenStars['loc']?.star, 'Thiên Đồng');
+    expect(result.hours.single.affinityType, 'Lục Hợp');
+    expect(result.aiSuggestedPrompt, 'Phân tích ngày hôm nay.');
+  });
 
-    expect(result.summary, 'Ngày thuận lợi.');
-    expect(result.career, 'Công việc hanh thông.');
-    expect(result.advice, 'Giữ nhịp độ ổn định.');
-    expect(result.dayOfficer, 'Thành');
-    expect(result.joyDirection, 'Tây Bắc');
-    expect(result.dailyPalace, 'Huynh Đệ');
-    expect(result.fortuneScore, 4.6);
-    expect(result.shouldDo, ['Khai trương']);
+  test('POST rejects a calendar-only response for a selected chart', () async {
+    adapter.onPost(
+      '/tuvi/daily-fortune',
+      (server) => server.reply(200, _response()),
+      data: {
+        'date': '2026-10-29',
+        'chartData': {'id': 'chart-1'},
+      },
+    );
+
+    expect(
+      () => repository.getPersonalized(
+        date: DateTime(2026, 10, 29),
+        chartData: const {'id': 'chart-1'},
+      ),
+      throwsA(isA<DailyFortuneException>()),
+    );
   });
 }
+
+Map<String, dynamic> _response() => {
+  'success': true,
+  'data': {
+    'date': '2026-10-29',
+    'dailyCalendar': {
+      'solarDateStr': '2026-10-29',
+      'dayOfWeek': 'Thứ Năm',
+      'lunarDay': 20,
+      'lunarMonth': 9,
+      'lunarYear': 2026,
+      'isLeapMonth': false,
+      'canChiDay': 'Bính Tý',
+      'canChiMonth': 'Mậu Tuất',
+      'canChiYear': 'Bính Ngọ',
+      'canChiHour': 'Mậu Tý',
+      'dayNayin': 'Giản Hạ Thủy',
+      'dayElement': 'Thủy',
+      'solarTerm': 'Sương Giáng',
+      'trucInfo': {
+        'name': 'Mãn',
+        'type': 'Hoàng Đạo',
+        'quality': 'Đại Cát',
+        'summary': 'Đầy đủ viên mãn.',
+        'goodFor': ['Khai trương'],
+        'badFor': ['Tranh chấp'],
+      },
+      'tuInfo': {
+        'name': 'Cang',
+        'element': 'Kim',
+        'animal': 'Long',
+        'nature': 'Hung',
+        'desc': 'Cẩn trọng.',
+      },
+      'hours': [
+        {
+          'branch': 'Tý',
+          'time': '23:00 - 00:59',
+          'isAuspicious': true,
+          'starName': 'Hoàng Đạo',
+        },
+        {
+          'branch': 'Dần',
+          'time': '03:00 - 04:59',
+          'isAuspicious': false,
+          'starName': 'Hắc Đạo',
+        },
+      ],
+      'hyThan': 'Tây Nam',
+      'taiThan': 'Chính Đông',
+      'hacThan': 'Chính Đông',
+      'recommendedActivities': ['Khai trương'],
+      'restrictedActivities': ['Tranh chấp'],
+    },
+    'personalFortune': null,
+    'aiSuggestedPrompt': null,
+  },
+};

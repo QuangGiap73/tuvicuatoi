@@ -133,7 +133,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoute.chat,
-                builder: (_, _) => const AiChatPage(),
+                builder: (_, state) => AiChatPage(
+                  initialPrompt: state.uri.queryParameters['prompt'],
+                ),
               ),
             ],
           ),

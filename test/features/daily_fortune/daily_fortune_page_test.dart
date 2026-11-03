@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tuvicuatoi/features/daily_fortune/data/daily_fortune_repository.dart';
+import 'package:tuvicuatoi/features/daily_fortune/domain/daily_calendar.dart';
 import 'package:tuvicuatoi/features/daily_fortune/domain/daily_fortune.dart';
-import 'package:tuvicuatoi/features/daily_fortune/domain/daily_fortune_reading.dart';
 import 'package:tuvicuatoi/features/daily_fortune/presentation/daily_fortune_page.dart';
 
 void main() {
@@ -65,24 +65,40 @@ class _FakeDailyFortuneRepository implements DailyFortuneRepository {
   final requestedDates = <DateTime>[];
 
   @override
-  Future<DailyFortune> getForDate({
+  Future<DailyFortune> getCalendar({
     required DateTime date,
     CancelToken? cancelToken,
   }) async {
     requestedDates.add(date);
-    return DailyFortune(
-      date: date,
-      summary: '',
-      canChiDay: 'Canh Ngọ',
-      canChiMonth: 'Mậu Tuất',
-      canChiYear: 'Bính Ngọ',
-    );
+    return _fortune(date);
   }
 
   @override
-  Future<DailyFortuneReading> getReading({
+  Future<DailyFortune> getPersonalized({
     required DateTime date,
     required Map<String, dynamic> chartData,
     CancelToken? cancelToken,
-  }) async => const DailyFortuneReading();
+  }) async => _fortune(date);
+
+  DailyFortune _fortune(DateTime date) => DailyFortune(
+    date: date,
+    calendar: DailyCalendar(
+      solarDate: date,
+      dayOfWeek: '',
+      lunarDay: 14,
+      lunarMonth: 9,
+      lunarYear: 2026,
+      isLeapMonth: false,
+      canChiDay: 'Canh Ngọ',
+      canChiMonth: 'Mậu Tuất',
+      canChiYear: 'Bính Ngọ',
+      canChiHour: 'Bính Tý',
+      dayNayin: 'Lộ Bàng Thổ',
+      dayElement: 'Thổ',
+      solarTerm: 'Sương Giáng',
+      hours: const [],
+      recommendedActivities: const [],
+      restrictedActivities: const [],
+    ),
+  );
 }

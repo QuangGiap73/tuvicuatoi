@@ -11,16 +11,20 @@ import 'widgets/daily_fortune_date_selector.dart';
 import 'widgets/daily_fortune_empty_state.dart';
 import 'widgets/daily_calendar_card.dart';
 import 'widgets/active_fortune_chart_card.dart';
+import 'widgets/auspicious_hours_card.dart';
 import 'widgets/fortune_guidance_card.dart';
 import 'widgets/fortune_hours_card.dart';
+import 'widgets/fortune_life_aspects_card.dart';
+import 'widgets/fortune_lucky_card.dart';
 import 'widgets/fortune_overview_card.dart';
+import 'widgets/fortune_ai_prompt_card.dart';
+import 'widgets/personal_fortune_details_card.dart';
 
 class DailyFortunePage extends ConsumerWidget {
   const DailyFortunePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(dailyFortuneControllerProvider);
     return MysticScaffold(
       safeTop: false,
       constrainBody: false,
@@ -36,96 +40,253 @@ class DailyFortunePage extends ConsumerWidget {
           filterQuality: FilterQuality.medium,
         ),
       ),
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          SafeArea(
-            bottom: false,
-            child: _DailyFortuneHeader(
-              selectedDate: state.selectedDate,
-              onBack: () =>
-                  context.canPop() ? context.pop() : context.go(AppRoute.home),
-              onCalendar: () => _selectDate(context, ref, state.selectedDate),
-            ),
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: MysticSpacing.contentMaxWidth,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 2, 8, 110),
-                child: Column(
-                  children: [
-                    DailyFortuneDateSelector(
-                      date: state.selectedDate,
-                      fortune: state.fortune,
-                      isLoading: state.isLoading,
-                      errorMessage: state.errorMessage,
-                      onPrevious: () => ref
-                          .read(dailyFortuneControllerProvider.notifier)
-                          .previousDay(),
-                      onNext: () => ref
-                          .read(dailyFortuneControllerProvider.notifier)
-                          .nextDay(),
-                      onToday: () => ref
-                          .read(dailyFortuneControllerProvider.notifier)
-                          .today(),
-                      onRetry: () => ref
-                          .read(dailyFortuneControllerProvider.notifier)
-                          .load(),
-                    ),
-                    const SizedBox(height: MysticSpacing.md),
-                    if (state.fortune == null)
-                      DailyFortuneEmptyState(date: state.selectedDate)
-                    else ...[
-                      DailyCalendarCard(fortune: state.fortune!),
-                      const SizedBox(height: 10),
-                      ActiveFortuneChartCard(
-                        charts: state.charts,
-                        selected: state.selectedChart,
-                        loading: state.isChartsLoading,
-                        onChanged: (chart) => ref
-                            .read(dailyFortuneControllerProvider.notifier)
-                            .selectChart(chart),
-                      ),
-                      const SizedBox(height: 10),
-                      FortuneOverviewCard(
-                        fortune: state.fortune!,
-                        loading: state.isReadingLoading,
-                        errorMessage: state.readingErrorMessage,
-                      ),
-                      const SizedBox(height: 10),
-                      FortuneGuidanceCard(fortune: state.fortune!),
-                      const SizedBox(height: 10),
-                      FortuneHoursCard(fortune: state.fortune!),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
+      body: const CustomScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: _DailyFortuneHeaderConnector()),
+          _DailyFortuneContent(),
         ],
       ),
     );
   }
+}
 
-  Future<void> _selectDate(
-    BuildContext context,
-    WidgetRef ref,
-    DateTime selectedDate,
-  ) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      helpText: 'Chọn ngày xem vận hạn',
+class _DailyFortuneHeaderConnector extends ConsumerWidget {
+  const _DailyFortuneHeaderConnector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final date = ref.watch(
+      dailyFortuneControllerProvider.select((state) => state.selectedDate),
     );
-    if (date == null) return;
-    ref.read(dailyFortuneControllerProvider.notifier).selectDate(date);
+    return SafeArea(
+      bottom: false,
+      child: _DailyFortuneHeader(
+        selectedDate: date,
+        onBack: () =>
+            context.canPop() ? context.pop() : context.go(AppRoute.home),
+        onCalendar: () => _selectDate(context, ref, date),
+      ),
+    );
   }
+}
+
+class _DailyFortuneContent extends ConsumerWidget {
+  const _DailyFortuneContent();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final structure = ref.watch(
+      dailyFortuneControllerProvider.select(
+        (state) => (
+          hasFortune: state.fortune != null,
+          hasPersonal: state.fortune?.personal != null,
+          hasPrompt:
+              state.fortune?.aiSuggestedPrompt?.trim().isNotEmpty == true,
+        ),
+      ),
+    );
+    final items = <Widget>[
+      const _DateSelectorConnector(),
+      const SizedBox(height: 4),
+    ];
+    void add(Widget child) {
+      items.add(child);
+      items.add(const SizedBox(height: 10));
+    }
+
+    if (!structure.hasFortune) {
+      add(const _EmptyFortuneConnector());
+    } else {
+      add(const _FortuneSection(type: _FortuneSectionType.calendar));
+      add(const _ActiveFortuneChartConnector());
+      add(const _FortuneOverviewConnector());
+      if (structure.hasPersonal) {
+        add(const _FortuneSection(type: _FortuneSectionType.lifeAspects));
+        add(const _FortuneSection(type: _FortuneSectionType.lucky));
+      }
+      add(const _FortuneSection(type: _FortuneSectionType.compatibleHours));
+      add(const _FortuneSection(type: _FortuneSectionType.directions));
+      add(const _FortuneSection(type: _FortuneSectionType.auspiciousHours));
+      if (structure.hasPersonal) {
+        add(const _FortuneSection(type: _FortuneSectionType.personalDetails));
+      }
+      if (structure.hasPrompt) {
+        add(const _FortuneSection(type: _FortuneSectionType.aiPrompt));
+      }
+    }
+    items.add(const SizedBox(height: 100));
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 0),
+      sliver: SliverList.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: MysticSpacing.contentMaxWidth,
+            ),
+            child: items[index],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DateSelectorConnector extends ConsumerWidget {
+  const _DateSelectorConnector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(
+      dailyFortuneControllerProvider.select(
+        (state) => (
+          date: state.selectedDate,
+          fortune: state.fortune,
+          loading: state.isLoading,
+          error: state.errorMessage,
+        ),
+      ),
+    );
+    return DailyFortuneDateSelector(
+      date: view.date,
+      fortune: view.fortune,
+      isLoading: view.loading,
+      errorMessage: view.error,
+      onPrevious: () =>
+          ref.read(dailyFortuneControllerProvider.notifier).previousDay(),
+      onNext: () => ref.read(dailyFortuneControllerProvider.notifier).nextDay(),
+      onToday: () => ref.read(dailyFortuneControllerProvider.notifier).today(),
+      onRetry: () => ref.read(dailyFortuneControllerProvider.notifier).load(),
+    );
+  }
+}
+
+class _EmptyFortuneConnector extends ConsumerWidget {
+  const _EmptyFortuneConnector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final date = ref.watch(
+      dailyFortuneControllerProvider.select((state) => state.selectedDate),
+    );
+    return DailyFortuneEmptyState(date: date);
+  }
+}
+
+class _FortuneOverviewConnector extends ConsumerWidget {
+  const _FortuneOverviewConnector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(
+      dailyFortuneControllerProvider.select(
+        (state) => (
+          fortune: state.fortune,
+          loading: state.isReadingLoading,
+          error: state.readingErrorMessage,
+        ),
+      ),
+    );
+    final fortune = view.fortune;
+    if (fortune == null) return const SizedBox.shrink();
+    return FortuneOverviewCard(
+      fortune: fortune,
+      loading: view.loading,
+      errorMessage: view.error,
+    );
+  }
+}
+
+enum _FortuneSectionType {
+  calendar,
+  lifeAspects,
+  personalDetails,
+  lucky,
+  compatibleHours,
+  directions,
+  auspiciousHours,
+  aiPrompt,
+}
+
+class _FortuneSection extends ConsumerWidget {
+  const _FortuneSection({required this.type});
+
+  final _FortuneSectionType type;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fortune = ref.watch(
+      dailyFortuneControllerProvider.select((state) => state.fortune),
+    );
+    if (fortune == null) return const SizedBox.shrink();
+    return switch (type) {
+      _FortuneSectionType.calendar => DailyCalendarCard(fortune: fortune),
+      _FortuneSectionType.lifeAspects => FortuneLifeAspectsCard(
+        fortune: fortune,
+      ),
+      _FortuneSectionType.personalDetails =>
+        fortune.personal == null
+            ? const SizedBox.shrink()
+            : PersonalFortuneDetailsCard(fortune: fortune.personal!),
+      _FortuneSectionType.lucky =>
+        fortune.personal == null
+            ? const SizedBox.shrink()
+            : FortuneLuckyCard(fortune: fortune.personal!),
+      _FortuneSectionType.compatibleHours => FortuneHoursCard(fortune: fortune),
+      _FortuneSectionType.directions => FortuneGuidanceCard(fortune: fortune),
+      _FortuneSectionType.auspiciousHours => AuspiciousHoursCard(
+        fortune: fortune,
+      ),
+      _FortuneSectionType.aiPrompt => FortuneAiPromptCard(
+        prompt: fortune.aiSuggestedPrompt ?? '',
+        onOpenChat: () => context.push(
+          '${AppRoute.chat}?prompt=${Uri.encodeQueryComponent(fortune.aiSuggestedPrompt ?? '')}',
+        ),
+      ),
+    };
+  }
+}
+
+class _ActiveFortuneChartConnector extends ConsumerWidget {
+  const _ActiveFortuneChartConnector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(
+      dailyFortuneControllerProvider.select(
+        (state) => (
+          charts: state.charts,
+          selected: state.selectedChart,
+          loading: state.isChartsLoading || state.isReadingLoading,
+        ),
+      ),
+    );
+    return ActiveFortuneChartCard(
+      charts: view.charts,
+      selected: view.selected,
+      loading: view.loading,
+      onChanged: (chart) =>
+          ref.read(dailyFortuneControllerProvider.notifier).selectChart(chart),
+    );
+  }
+}
+
+Future<void> _selectDate(
+  BuildContext context,
+  WidgetRef ref,
+  DateTime selectedDate,
+) async {
+  final date = await showDatePicker(
+    context: context,
+    initialDate: selectedDate,
+    firstDate: DateTime(1900),
+    lastDate: DateTime.now().add(const Duration(days: 365)),
+    helpText: 'Chọn ngày xem vận hạn',
+  );
+  if (date == null) return;
+  ref.read(dailyFortuneControllerProvider.notifier).selectDate(date);
 }
 
 class _DailyFortuneHeader extends StatelessWidget {
@@ -186,10 +347,6 @@ class _DailyFortuneHeader extends StatelessWidget {
                                     blurRadius: 3,
                                     offset: Offset(0, 2),
                                   ),
-                                  Shadow(
-                                    color: Color(0x66E4AE45),
-                                    blurRadius: 10,
-                                  ),
                                 ],
                               ),
                             ),
@@ -206,7 +363,7 @@ class _DailyFortuneHeader extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: .15,
                                 shadows: const [
-                                  Shadow(color: Colors.black, blurRadius: 4),
+                                  Shadow(color: Colors.black, blurRadius: 2),
                                 ],
                               ),
                             ),
@@ -260,10 +417,7 @@ class _HeaderCircleButton extends StatelessWidget {
       shape: BoxShape.circle,
       color: const Color(0xB3071827),
       border: Border.all(color: const Color(0xFFD4A348), width: 1.3),
-      boxShadow: const [
-        BoxShadow(color: Color(0x88000000), blurRadius: 7),
-        BoxShadow(color: Color(0x44D4A348), blurRadius: 8),
-      ],
+      boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 3)],
     ),
     child: IconButton(
       tooltip: tooltip,

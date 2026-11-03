@@ -6,21 +6,20 @@ import '../../../horoscope/data/chart_repository.dart';
 import '../../../horoscope/domain/saved_chart.dart';
 import '../../data/daily_fortune_repository.dart';
 import '../../domain/daily_fortune.dart';
-import '../../domain/daily_fortune_reading.dart';
 import '../state/daily_fortune_state.dart';
 
 class DailyFortuneController extends Notifier<DailyFortuneState> {
-  CancelToken? _calendarToken, _chartToken, _readingToken;
-  int _requestId = 0;
+  CancelToken? _fortuneToken;
+  CancelToken? _chartToken;
+  int _session = 0;
   final _calendarCache = <String, DailyFortune>{};
   final _personalCache = <String, DailyFortune>{};
 
   @override
   DailyFortuneState build() {
     ref.onDispose(() {
-      _calendarToken?.cancel();
+      _fortuneToken?.cancel();
       _chartToken?.cancel();
-      _readingToken?.cancel();
     });
     final now = DateTime.now();
     final initial = DailyFortuneState(
@@ -36,7 +35,7 @@ class DailyFortuneController extends Notifier<DailyFortuneState> {
   void selectDate(DateTime date) {
     final value = DateTime(date.year, date.month, date.day);
     if (value == state.selectedDate) return;
-    _readingToken?.cancel('Ngày xem đã thay đổi');
+    _fortuneToken?.cancel('Ngày xem đã thay đổi');
     state = state.copyWith(
       selectedDate: value,
       phase: DailyFortunePhase.idle,
@@ -56,50 +55,76 @@ class DailyFortuneController extends Notifier<DailyFortuneState> {
     selectDate(DateTime(now.year, now.month, now.day));
   }
 
-  Future<void> load() async {
-    final requestId = ++_requestId;
+  Future<void> load({bool force = false}) async {
+    final session = ++_session;
     final date = state.selectedDate;
-    final key = _dateKey(date);
-    final cached = _calendarCache[key];
-    if (cached != null) {
+    final chart = state.selectedChart;
+    final chartData = state.selectedChartData;
+    final personalized = chart != null && chartData.isNotEmpty;
+    final key = personalized ? '${chart.id}:${_dateKey(date)}' : _dateKey(date);
+    final cache = personalized ? _personalCache : _calendarCache;
+    final cached = cache[key];
+    if (!force && cached != null) {
       state = state.copyWith(
         phase: DailyFortunePhase.ready,
         fortune: cached,
+        isReadingLoading: false,
         clearError: true,
+        clearReadingError: true,
       );
-      await _loadReading(requestId, cached);
       return;
     }
-    _calendarToken?.cancel('Ngày xem đã thay đổi');
+    _fortuneToken?.cancel('Tải dữ liệu vận hạn mới');
     final token = CancelToken();
-    _calendarToken = token;
-    state = state.copyWith(phase: DailyFortunePhase.loading, clearError: true);
+    _fortuneToken = token;
+    final hasData = state.fortune != null;
+    state = state.copyWith(
+      phase: hasData ? DailyFortunePhase.ready : DailyFortunePhase.loading,
+      isReadingLoading: personalized,
+      clearError: true,
+      clearReadingError: true,
+    );
     try {
-      final result = await ref
-          .read(dailyFortuneRepositoryProvider)
-          .getForDate(date: date, cancelToken: token);
-      if (token.isCancelled || requestId != _requestId) return;
-      _putCache(_calendarCache, key, result);
+      final repository = ref.read(dailyFortuneRepositoryProvider);
+      final result = personalized
+          ? await repository.getPersonalized(
+              date: date,
+              chartData: chartData,
+              cancelToken: token,
+            )
+          : await repository.getCalendar(date: date, cancelToken: token);
+      if (token.isCancelled || session != _session) return;
+      _putCache(cache, key, result);
+      if (personalized) {
+        _putCache(_calendarCache, _dateKey(date), result.calendarOnly);
+      }
       state = state.copyWith(
         phase: DailyFortunePhase.ready,
         fortune: result,
+        isReadingLoading: false,
         clearError: true,
+        clearReadingError: true,
       );
-      await _loadReading(requestId, result);
     } on DioException catch (error) {
-      if (CancelToken.isCancel(error) || requestId != _requestId) return;
-      _setError('Không thể tải lịch Can Chi. Chạm để thử lại.');
+      if (CancelToken.isCancel(error) || session != _session) return;
+      await _handleFailure(
+        session,
+        date,
+        personalized,
+        error.message ?? 'Không thể tải dữ liệu vận hạn.',
+        token,
+      );
     } on DailyFortuneException catch (error) {
-      if (requestId != _requestId) return;
-      _setError(error.message);
+      if (session != _session) return;
+      await _handleFailure(session, date, personalized, error.message, token);
     } finally {
-      if (identical(_calendarToken, token)) _calendarToken = null;
+      if (identical(_fortuneToken, token)) _fortuneToken = null;
     }
   }
 
   Future<void> loadCharts() async {
     if (ref.read(authControllerProvider).asData?.value?.user == null) return;
-    _chartToken?.cancel('Đang tải danh sách mới');
+    _chartToken?.cancel('Tải danh sách lá số mới');
     final token = CancelToken();
     _chartToken = token;
     state = state.copyWith(isChartsLoading: true);
@@ -112,7 +137,9 @@ class DailyFortuneController extends Notifier<DailyFortuneState> {
         charts: List.unmodifiable(charts),
         isChartsLoading: false,
       );
-      if (charts.isNotEmpty) await selectChart(charts.first);
+      if (charts.isNotEmpty && state.selectedChart == null) {
+        await selectChart(charts.first);
+      }
     } on ChartException catch (error) {
       if (token.isCancelled) return;
       state = state.copyWith(
@@ -124,118 +151,160 @@ class DailyFortuneController extends Notifier<DailyFortuneState> {
 
   Future<void> selectChart(SavedChart chart) async {
     if (state.selectedChart?.id == chart.id &&
-        state.selectedChartDetail != null) {
+        _hasUsableChartData(state.selectedChartData)) {
       return;
     }
-    _chartToken?.cancel('Đổi lá số');
-    _readingToken?.cancel('Đổi lá số');
-    final token = CancelToken();
-    _chartToken = token;
+    final initialData = _chartPayload(chart, chart.chartData);
+    // Dữ liệu từ API danh sách thường chỉ là bản tóm tắt. Chỉ dùng ngay khi
+    // object đã có 12 cung; nếu không, tải endpoint chi tiết trước khi xem hạn.
+    final hasInitialData = _hasPalaceData(initialData);
+    _fortuneToken?.cancel('Đổi lá số');
     state = state.copyWith(
       selectedChart: chart,
-      clearSelectedDetail: true,
-      fortune: _calendarCache[_dateKey(state.selectedDate)] ?? state.fortune,
-      isChartsLoading: true,
+      selectedChartData: initialData,
+      isChartsLoading: !hasInitialData,
+      fortune: _calendarCache[_dateKey(state.selectedDate)],
+      clearReadingError: true,
     );
+    if (hasInitialData) {
+      await load();
+      return;
+    }
+    _chartToken?.cancel('Tải chi tiết lá số');
+    final token = CancelToken();
+    _chartToken = token;
     try {
       final detail = await ref
           .read(chartRepositoryProvider)
           .getChartDetail(chart, cancelToken: token);
       if (token.isCancelled || state.selectedChart?.id != chart.id) return;
+      final detailData = _chartPayload(detail.summary, detail.chartData);
+      if (!_hasUsableChartData(detailData)) {
+        state = state.copyWith(
+          isChartsLoading: false,
+          readingErrorMessage:
+              'Lá số chưa có đủ ngày, giờ sinh, giới tính hoặc dữ liệu 12 cung.',
+        );
+        return;
+      }
       state = state.copyWith(
         selectedChart: detail.summary,
-        selectedChartDetail: detail,
+        selectedChartData: detailData,
         isChartsLoading: false,
-        clearError: true,
       );
-      final fortune = state.fortune;
-      if (fortune != null) await _loadReading(_requestId, fortune);
+      await load();
     } on ChartException catch (error) {
       if (token.isCancelled) return;
       state = state.copyWith(
         isChartsLoading: false,
-        errorMessage: error.message,
+        readingErrorMessage: error.message,
       );
     }
   }
 
-  Future<void> _loadReading(int requestId, DailyFortune base) async {
-    final detail = state.selectedChartDetail;
-    final chart = state.selectedChart;
-    if (detail == null || chart == null) return;
-    final key = '${chart.id}:${_dateKey(base.date)}';
-    final cached = _personalCache[key];
-    if (cached != null) {
-      if (requestId == _requestId) {
-        state = state.copyWith(fortune: cached, isReadingLoading: false);
-      }
-      return;
+  Future<void> _handleFailure(
+    int session,
+    DateTime date,
+    bool personalized,
+    String message,
+    CancelToken cancelToken,
+  ) async {
+    if (personalized) {
+      try {
+        final fallback =
+            _calendarCache[_dateKey(date)] ??
+            await ref
+                .read(dailyFortuneRepositoryProvider)
+                .getCalendar(date: date, cancelToken: cancelToken);
+        if (cancelToken.isCancelled || session != _session) return;
+        _putCache(_calendarCache, _dateKey(date), fallback);
+        state = state.copyWith(
+          phase: DailyFortunePhase.ready,
+          fortune: fallback,
+          isReadingLoading: false,
+          readingErrorMessage: message,
+        );
+        return;
+      } catch (_) {}
     }
-    _readingToken?.cancel('Đang tải Nhật vận mới');
-    final token = CancelToken();
-    _readingToken = token;
-    state = state.copyWith(isReadingLoading: true);
-    try {
-      final reading = await ref
-          .read(dailyFortuneRepositoryProvider)
-          .getReading(
-            date: base.date,
-            chartData: detail.chartData,
-            cancelToken: token,
-          );
-      if (token.isCancelled || requestId != _requestId) return;
-      final result = base.applyReading(reading);
-      _putCache(_personalCache, key, result);
-      state = state.copyWith(
-        fortune: result,
-        isReadingLoading: false,
-        clearError: true,
-        clearReadingError: true,
-      );
-    } on DioException catch (error) {
-      if (!CancelToken.isCancel(error)) {
-        _useFallbackReading(base, error.response?.data?.toString());
-      }
-    } on DailyFortuneException catch (error) {
-      _useFallbackReading(base, error.message);
-    }
-  }
-
-  void _useFallbackReading(DailyFortune base, String? message) {
-    final raw = state.selectedChartDetail?.chartData;
-    final general = raw?['generalReading'];
-    final map = general is Map
-        ? Map<String, dynamic>.from(general)
-        : const <String, dynamic>{};
-    String? text(Object? value) {
-      final result = value?.toString().trim();
-      return result == null || result.isEmpty ? null : result;
-    }
-
-    final fallback = DailyFortuneReading(
-      summary: text(map['currentYearFortune'] ?? raw?['aiSummary']),
-      career: text(map['careerReading']),
-      wealth: text(map['wealthReading']),
-      love: text(map['loveReading']),
-      health: text(map['healthReading']),
-    );
-    state = state.copyWith(
-      fortune: base.applyReading(fallback),
-      isReadingLoading: false,
-      readingErrorMessage:
-          message ?? 'Dịch vụ Nhật vận chưa trả về dữ liệu hợp lệ.',
-    );
-  }
-
-  void _setError(String message) {
     state = state.copyWith(
       phase: DailyFortunePhase.failure,
+      isReadingLoading: false,
       errorMessage: message,
     );
   }
 
   static String _dateKey(DateTime date) =>
       '${date.year}-${date.month}-${date.day}';
+
+  static Map<String, dynamic> _chartPayload(
+    SavedChart chart,
+    Map<String, dynamic> raw,
+  ) {
+    final result = <String, dynamic>{...raw};
+    void put(String key, Object? value) {
+      if (result[key] != null && result[key].toString().trim().isNotEmpty) {
+        return;
+      }
+      if (value != null && value.toString().trim().isNotEmpty) {
+        result[key] = value;
+      }
+    }
+
+    put('fullName', chart.displayName);
+    put('gender', chart.gender);
+    put('gioiTinh', chart.gender);
+    put('gio', chart.hourBranch?.replaceFirst(RegExp(r'^Giờ\s+'), ''));
+    put('menh', chart.menh);
+
+    final dateParts = RegExp(
+      r'\d+',
+    ).allMatches(chart.solarDate).map((match) => match.group(0)!).toList();
+    if (dateParts.length >= 3) {
+      final first = int.tryParse(dateParts[0]);
+      final second = int.tryParse(dateParts[1]);
+      final third = int.tryParse(dateParts[2]);
+      if (first != null && second != null && third != null) {
+        if (dateParts[0].length == 4) {
+          result['solarDate'] =
+              '${first.toString().padLeft(4, '0')}-${second.toString().padLeft(2, '0')}-${third.toString().padLeft(2, '0')}';
+          put('nam', first);
+          put('thang', second);
+          put('ngay', third);
+        } else {
+          result['solarDate'] =
+              '${third.toString().padLeft(4, '0')}-${second.toString().padLeft(2, '0')}-${first.toString().padLeft(2, '0')}';
+          put('ngay', first);
+          put('thang', second);
+          put('nam', third);
+        }
+      }
+    }
+    return Map.unmodifiable(result);
+  }
+
+  static bool _hasUsableChartData(Map<String, dynamic> data) {
+    if (_hasPalaceData(data)) return true;
+    bool has(String key) =>
+        data[key] != null && data[key].toString().trim().isNotEmpty;
+    final vietnameseBirth =
+        has('ngay') &&
+        has('thang') &&
+        has('nam') &&
+        has('gio') &&
+        has('gioiTinh');
+    final solarBirth =
+        has('solarDate') &&
+        (has('solarTime') || has('gio')) &&
+        (has('gender') || has('gioiTinh'));
+    return vietnameseBirth || solarBirth;
+  }
+
+  static bool _hasPalaceData(Map<String, dynamic> data) {
+    final palaces = data['palaces'] ?? data['cung'] ?? data['twelvePalaces'];
+    return palaces is Map && palaces.isNotEmpty;
+  }
+
   static void _putCache(
     Map<String, DailyFortune> cache,
     String key,

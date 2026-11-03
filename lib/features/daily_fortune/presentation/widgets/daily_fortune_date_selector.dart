@@ -42,7 +42,7 @@ class DailyFortuneDateSelector extends StatelessWidget {
       final compact = width < 340;
       final frameHeight = (width / 3).clamp(104.0, 144.0);
       return SizedBox(
-        height: frameHeight + 10,
+        height: frameHeight,
         child: Stack(
           alignment: Alignment.topCenter,
           clipBehavior: Clip.none,
@@ -205,9 +205,9 @@ class _DateCenter extends StatelessWidget {
   static String _canChiText(DailyFortune? fortune) {
     if (fortune == null) return 'Đang cập nhật lịch Can Chi';
     final parts = <String>[
-      if (fortune.canChiDay != null) 'Ngày ${fortune.canChiDay}',
-      if (fortune.canChiMonth != null) 'Tháng ${fortune.canChiMonth}',
-      if (fortune.canChiYear != null) 'Năm ${fortune.canChiYear}',
+      if (fortune.canChiDay.isNotEmpty) 'Ngày ${fortune.canChiDay}',
+      if (fortune.canChiMonth.isNotEmpty) 'Tháng ${fortune.canChiMonth}',
+      if (fortune.canChiYear.isNotEmpty) 'Năm ${fortune.canChiYear}',
     ];
     return parts.isEmpty ? 'Chưa có dữ liệu Can Chi' : parts.join(' • ');
   }
@@ -262,6 +262,8 @@ class _DateMoveButton extends StatelessWidget {
             Image.asset(
               MysticAssets.dailyFortuneButtonFrame,
               fit: BoxFit.fill,
+              cacheWidth: (200 * MediaQuery.devicePixelRatioOf(context))
+                  .round(),
               filterQuality: FilterQuality.medium,
             ),
             Material(

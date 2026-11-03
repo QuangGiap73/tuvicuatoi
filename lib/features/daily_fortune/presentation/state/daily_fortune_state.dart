@@ -1,8 +1,7 @@
-import '../../domain/daily_fortune.dart';
 import '../../../horoscope/domain/saved_chart.dart';
-import '../../../horoscope/domain/saved_chart_detail.dart';
+import '../../domain/daily_fortune.dart';
 
-enum DailyFortunePhase { idle, loading, ready, empty, failure }
+enum DailyFortunePhase { idle, loading, ready, failure }
 
 class DailyFortuneState {
   const DailyFortuneState({
@@ -12,37 +11,33 @@ class DailyFortuneState {
     this.errorMessage,
     this.charts = const [],
     this.selectedChart,
-    this.selectedChartDetail,
+    this.selectedChartData = const {},
     this.isChartsLoading = false,
     this.isReadingLoading = false,
     this.readingErrorMessage,
   });
-
   final DateTime selectedDate;
   final DailyFortunePhase phase;
   final DailyFortune? fortune;
   final String? errorMessage;
   final List<SavedChart> charts;
   final SavedChart? selectedChart;
-  final SavedChartDetail? selectedChartDetail;
+  final Map<String, dynamic> selectedChartData;
   final bool isChartsLoading;
   final bool isReadingLoading;
   final String? readingErrorMessage;
-
   bool get isLoading => phase == DailyFortunePhase.loading;
 
   DailyFortuneState copyWith({
     DateTime? selectedDate,
     DailyFortunePhase? phase,
     DailyFortune? fortune,
-    String? errorMessage,
     bool clearFortune = false,
+    String? errorMessage,
     bool clearError = false,
     List<SavedChart>? charts,
     SavedChart? selectedChart,
-    SavedChartDetail? selectedChartDetail,
-    bool clearSelectedChart = false,
-    bool clearSelectedDetail = false,
+    Map<String, dynamic>? selectedChartData,
     bool? isChartsLoading,
     bool? isReadingLoading,
     String? readingErrorMessage,
@@ -53,12 +48,8 @@ class DailyFortuneState {
     fortune: clearFortune ? null : fortune ?? this.fortune,
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     charts: charts ?? this.charts,
-    selectedChart: clearSelectedChart
-        ? null
-        : selectedChart ?? this.selectedChart,
-    selectedChartDetail: clearSelectedChart || clearSelectedDetail
-        ? null
-        : selectedChartDetail ?? this.selectedChartDetail,
+    selectedChart: selectedChart ?? this.selectedChart,
+    selectedChartData: selectedChartData ?? this.selectedChartData,
     isChartsLoading: isChartsLoading ?? this.isChartsLoading,
     isReadingLoading: isReadingLoading ?? this.isReadingLoading,
     readingErrorMessage: clearReadingError

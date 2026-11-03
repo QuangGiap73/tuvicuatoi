@@ -1,111 +1,63 @@
-import 'daily_fortune_reading.dart';
+import 'daily_calendar.dart';
+import 'fortune_hour.dart';
+import 'personal_fortune.dart';
 
+/// Snapshot nguyên tử của một ngày. Nếu có lá số, lịch và vận cá nhân luôn
+/// đến từ cùng response để không hiển thị lệch ngày hoặc lệch lá số.
 class DailyFortune {
   const DailyFortune({
     required this.date,
-    required this.summary,
-    this.canChi,
-    this.canChiDay,
-    this.canChiMonth,
-    this.canChiYear,
-    this.canChiHour,
-    this.lunarDate,
-    this.napAm,
-    this.dayElement,
-    this.dayOfficer,
-    this.dayRating,
-    this.dayOfficerDescription,
-    this.solarTerm,
-    this.lunarMansion,
-    this.lunarMansionRating,
-    this.lunarMansionDescription,
-    this.joyDirection,
-    this.wealthDirection,
-    this.dailyPalace,
-    this.fortuneScore = 3,
-    this.career,
-    this.wealth,
-    this.love,
-    this.health,
-    this.auspiciousHours = const [],
-    this.inauspiciousHours = const [],
-    this.shouldDo = const [],
-    this.shouldAvoid = const [],
-    this.advice,
+    required this.calendar,
+    this.personal,
+    this.aiSuggestedPrompt,
     this.rawData = const {},
   });
-
   final DateTime date;
-  final String summary;
-  final String? canChi;
-  final String? canChiDay;
-  final String? canChiMonth;
-  final String? canChiYear;
-  final String? canChiHour;
-  final String? lunarDate;
-  final String? napAm;
-  final String? dayElement;
-  final String? dayOfficer;
-  final String? dayRating;
-  final String? dayOfficerDescription;
-  final String? solarTerm;
-  final String? lunarMansion;
-  final String? lunarMansionRating;
-  final String? lunarMansionDescription;
-  final String? joyDirection;
-  final String? wealthDirection;
-  final String? dailyPalace;
-  final double fortuneScore;
-  final String? career;
-  final String? wealth;
-  final String? love;
-  final String? health;
-  final List<String> auspiciousHours;
-  final List<String> inauspiciousHours;
-  final List<String> shouldDo;
-  final List<String> shouldAvoid;
-  final String? advice;
+  final DailyCalendar calendar;
+  final PersonalFortune? personal;
+  final String? aiSuggestedPrompt;
   final Map<String, dynamic> rawData;
 
-  DailyFortune applyReading(DailyFortuneReading reading) => DailyFortune(
-    date: date,
-    summary: reading.summary ?? summary,
-    canChi: canChi,
-    canChiDay: canChiDay,
-    canChiMonth: canChiMonth,
-    canChiYear: canChiYear,
-    canChiHour: canChiHour,
-    lunarDate: lunarDate,
-    napAm: napAm,
-    dayElement: dayElement,
-    dayOfficer: reading.dayOfficer ?? dayOfficer,
-    dayRating: reading.dayRating ?? dayRating,
-    dayOfficerDescription:
-        reading.dayOfficerDescription ?? dayOfficerDescription,
-    solarTerm: reading.solarTerm ?? solarTerm,
-    lunarMansion: reading.lunarMansion ?? lunarMansion,
-    lunarMansionRating: reading.lunarMansionRating ?? lunarMansionRating,
-    lunarMansionDescription:
-        reading.lunarMansionDescription ?? lunarMansionDescription,
-    joyDirection: reading.joyDirection ?? joyDirection,
-    wealthDirection: reading.wealthDirection ?? wealthDirection,
-    dailyPalace: reading.dailyPalace ?? dailyPalace,
-    fortuneScore: reading.fortuneScore ?? fortuneScore,
-    career: reading.career,
-    wealth: reading.wealth,
-    love: reading.love,
-    health: reading.health,
-    auspiciousHours: reading.auspiciousHours.isEmpty
-        ? auspiciousHours
-        : reading.auspiciousHours,
-    inauspiciousHours: reading.inauspiciousHours.isEmpty
-        ? inauspiciousHours
-        : reading.inauspiciousHours,
-    shouldDo: reading.shouldDo.isEmpty ? shouldDo : reading.shouldDo,
-    shouldAvoid: reading.shouldAvoid.isEmpty
-        ? shouldAvoid
-        : reading.shouldAvoid,
-    advice: reading.advice,
-    rawData: {...rawData, 'reading': reading.rawData},
-  );
+  bool get isPersonalized => personal != null;
+  DailyFortune get calendarOnly => personal == null
+      ? this
+      : DailyFortune(date: date, calendar: calendar, rawData: rawData);
+  String get summary => personal == null
+      ? calendar.truc?.summary ?? ''
+      : [
+          personal!.branchRelationDescription,
+          personal!.elementRelationDescription,
+        ].where((value) => value.isNotEmpty).join('\n\n');
+  String get canChi => [canChiDay, canChiMonth, canChiYear].join(' • ');
+  String get canChiDay => calendar.canChiDay;
+  String get canChiMonth => calendar.canChiMonth;
+  String get canChiYear => calendar.canChiYear;
+  String get canChiHour => calendar.canChiHour;
+  String get lunarDate => calendar.lunarDateLabel;
+  String get napAm => calendar.dayNayin;
+  String get dayElement => calendar.dayElement;
+  String? get dayOfficer => calendar.truc?.name;
+  String? get dayRating => calendar.truc?.quality;
+  String? get dayOfficerDescription => calendar.truc?.summary;
+  String get solarTerm => calendar.solarTerm;
+  String? get lunarMansion => calendar.lunarMansion?.name;
+  String? get lunarMansionRating => calendar.lunarMansion?.nature;
+  String? get lunarMansionDescription => calendar.lunarMansion?.description;
+  String? get joyDirection => calendar.joyDirection;
+  String? get wealthDirection => calendar.wealthDirection;
+  String? get dailyPalace => personal?.palaceName;
+  int get fortuneScore => personal?.overallScore ?? 0;
+  String? get career => _text(personal?.careerAdvice);
+  String? get wealth => _text(personal?.wealthAdvice);
+  String? get love => _text(personal?.loveAdvice);
+  String? get health => _text(personal?.healthAdvice);
+  List<FortuneHour> get hours => personal?.personalizedHours.isNotEmpty == true
+      ? personal!.personalizedHours
+      : calendar.hours;
+  List<String> get shouldDo => calendar.recommendedActivities;
+  List<String> get shouldAvoid => calendar.restrictedActivities;
+  String? get advice => _text(personal?.luckyColorReason);
+
+  static String? _text(String? value) =>
+      value == null || value.trim().isEmpty ? null : value.trim();
 }
