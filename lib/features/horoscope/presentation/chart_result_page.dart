@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
-import '../../ai_chat/presentation/controllers/ai_chat_controller.dart';
 import '../../interpretation/domain/interpretation_models.dart';
 import '../../interpretation/presentation/controllers/interpretation_controller.dart';
 import '../../palace_detail/domain/palace_detail_models.dart';
@@ -76,13 +75,6 @@ class ChartResultPage extends ConsumerWidget {
                         isSaving: state.isSaving,
                         onSave: () => _save(context, ref),
                         onInterpret: () => _openInterpretation(context, ref),
-                        onAskAi: () {
-                          ref
-                              .read(aiChatControllerProvider.notifier)
-                              .useGeneratedChart(result);
-                          context.push(AppRoute.chat);
-                        },
-                        onExport: () => _comingSoon(context, 'Xuất PDF'),
                       ),
                       const SizedBox(height: 10),
                       ChartPalaceBoard(
@@ -159,12 +151,6 @@ class ChartResultPage extends ConsumerWidget {
           ),
         );
     context.push(AppRoute.palaceDetail);
-  }
-
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature sẽ được nối ở bước tiếp theo.')),
-    );
   }
 }
 

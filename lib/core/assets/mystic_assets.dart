@@ -40,6 +40,7 @@ abstract final class MysticAssets {
   static const dailyFortuneButtonFrame = '$frame/frame_D.png';
   static const dailyFortuneChartFrame = '$frame/frame_daily_B.png';
   static const dailyFortuneOverviewFrame = '$frame/frame_daily_C.png';
+  static const horoscopeCenterFrame = '$frame/frame_tuvi_A.png';
   static const horoscopeFormFrame = '$frame/frame_la_so.png';
   static const palaceDetailFrame = '$frame/frame_A_3.png';
   static const palaceDetailBanner = '$frame/frame_A_4.png';

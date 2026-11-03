@@ -6,8 +6,6 @@ class ChartResultActions extends StatelessWidget {
     required this.isSaving,
     required this.onSave,
     required this.onInterpret,
-    required this.onAskAi,
-    required this.onExport,
     super.key,
   });
 
@@ -15,52 +13,26 @@ class ChartResultActions extends StatelessWidget {
   final bool isSaving;
   final VoidCallback onSave;
   final VoidCallback onInterpret;
-  final VoidCallback onAskAi;
-  final VoidCallback onExport;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
     children: [
-      Row(
-        children: [
-          Expanded(
-            child: _ActionButton(
-              label: isSaved ? 'ĐÃ LƯU' : 'LƯU LÁ SỐ',
-              icon: isSaved ? Icons.check_circle : Icons.bookmark_add_outlined,
-              filled: true,
-              loading: isSaving,
-              onPressed: isSaved || isSaving ? null : onSave,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _ActionButton(
-              label: 'LUẬN GIẢI',
-              icon: Icons.menu_book_outlined,
-              onPressed: onInterpret,
-            ),
-          ),
-        ],
+      Expanded(
+        child: _ActionButton(
+          label: isSaved ? 'ĐÃ LƯU' : 'LƯU LÁ SỐ',
+          icon: isSaved ? Icons.check_circle : Icons.bookmark_add_outlined,
+          filled: true,
+          loading: isSaving,
+          onPressed: isSaved || isSaving ? null : onSave,
+        ),
       ),
-      const SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(
-            child: _ActionButton(
-              label: 'HỎI ĐÁP TỬ VI',
-              icon: Icons.auto_awesome,
-              onPressed: onAskAi,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _ActionButton(
-              label: 'TẢI PDF',
-              icon: Icons.download_outlined,
-              onPressed: onExport,
-            ),
-          ),
-        ],
+      const SizedBox(width: 8),
+      Expanded(
+        child: _ActionButton(
+          label: 'LUẬN GIẢI',
+          icon: Icons.menu_book_outlined,
+          onPressed: onInterpret,
+        ),
       ),
     ],
   );
