@@ -12,7 +12,6 @@ import '../domain/chart_result.dart';
 import 'providers/chart_form_providers.dart';
 import 'widgets/chart_palace_board.dart';
 import 'widgets/chart_result_actions.dart';
-import 'widgets/chart_result_header.dart';
 
 class ChartResultPage extends ConsumerWidget {
   const ChartResultPage({super.key});
@@ -68,8 +67,6 @@ class ChartResultPage extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 26),
                   sliver: SliverList.list(
                     children: [
-                      ChartResultHeader(result: result),
-                      const SizedBox(height: 10),
                       ChartResultActions(
                         isSaved: state.isSaved,
                         isSaving: state.isSaving,
@@ -83,7 +80,7 @@ class ChartResultPage extends ConsumerWidget {
                             _openPalaceDetail(context, ref, result, palace),
                       ),
                       const SizedBox(height: 12),
-                      const _DetailHint(),
+                      _ChartInsights(result: result),
                     ],
                   ),
                 ),
@@ -154,6 +151,176 @@ class ChartResultPage extends ConsumerWidget {
   }
 }
 
+class _ChartInsights extends StatelessWidget {
+  const _ChartInsights({required this.result});
+
+  final ChartResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final mainStars = result.palaces
+        .expand((palace) => palace.mainStars)
+        .map((star) => star.name)
+        .where((name) => name.trim().isNotEmpty)
+        .toSet()
+        .length;
+    final luckyStars = result.palaces
+        .expand((palace) => palace.luckyStars)
+        .where((name) => name.trim().isNotEmpty)
+        .toSet()
+        .length;
+    final badStars = result.palaces
+        .expand((palace) => palace.badStars)
+        .where((name) => name.trim().isNotEmpty)
+        .toSet()
+        .length;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(13, 12, 13, 13),
+      decoration: BoxDecoration(
+        color: const Color(0xE8081B2A),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0xFFC99532), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.auto_graph_rounded,
+                size: 19,
+                color: Color(0xFFFFD66E),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'TỔNG QUAN TINH BÀN',
+                style: TextStyle(
+                  color: Color(0xFFFFE1A0),
+                  fontFamily: 'serif',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _InsightMetric(
+                  value: mainStars,
+                  label: 'Chính tinh',
+                  color: const Color(0xFFFFD66E),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: _InsightMetric(
+                  value: luckyStars,
+                  label: 'Cát tinh',
+                  color: const Color(0xFF72D3A2),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: _InsightMetric(
+                  value: badStars,
+                  label: 'Sát tinh',
+                  color: const Color(0xFFFF8B88),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 11),
+          const Divider(color: Color(0x55D7AA50), height: 1),
+          const SizedBox(height: 9),
+          const Wrap(
+            spacing: 14,
+            runSpacing: 7,
+            children: [
+              _LegendDot(color: Color(0xFF16805D), label: 'Cát tinh hỗ trợ'),
+              _LegendDot(color: Color(0xFFB12B36), label: 'Sát tinh thử thách'),
+              _LegendDot(color: Color(0xFF329A72), label: 'Cung an Thân'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightMetric extends StatelessWidget {
+  const _InsightMetric({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final int value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+    decoration: BoxDecoration(
+      color: const Color(0xFF102A3A),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: color.withValues(alpha: .6)),
+    ),
+    child: Column(
+      children: [
+        Text(
+          '$value',
+          style: TextStyle(
+            color: color,
+            fontFamily: 'serif',
+            fontSize: 21,
+            height: 1,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFFD9CCAD),
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 5),
+      Text(
+        label,
+        style: const TextStyle(color: Color(0xFFBEB293), fontSize: 9.5),
+      ),
+    ],
+  );
+}
+
 class _ResultAppBar extends StatelessWidget {
   const _ResultAppBar({required this.onBack});
   final VoidCallback onBack;
@@ -198,46 +365,6 @@ class _ResultAppBar extends StatelessWidget {
           icon: Icon(Icons.menu_rounded),
           color: Color(0xFFFFD66E),
         ),
-      ],
-    ),
-  );
-}
-
-class _DetailHint extends StatelessWidget {
-  const _DetailHint();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xD9081824),
-      borderRadius: BorderRadius.circular(28),
-      border: Border.all(color: const Color(0xFFCE9C3C)),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.grid_view_rounded, color: Color(0xFFFFD66E)),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'CHỌN CUNG XEM CHI TIẾT',
-                style: TextStyle(
-                  color: Color(0xFFFFE5AB),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                'Nhấn vào từng cung để xem dữ liệu chi tiết',
-                style: TextStyle(color: Color(0xFFBDAE8D), fontSize: 9),
-              ),
-            ],
-          ),
-        ),
-        Icon(Icons.arrow_forward_rounded, color: Color(0xFFFFD66E)),
       ],
     ),
   );

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/widgets/mystic_frame_button.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import 'providers/article_providers.dart';
 import 'widgets/article_cards.dart';
@@ -95,24 +96,22 @@ class _ArticlesPageState extends ConsumerState<ArticlesPage> {
                     itemBuilder: (context, index) {
                       final category = categories[index];
                       final selected = category == filter.category;
-                      return ChoiceChip(
-                        selected: selected,
-                        onSelected: (_) => ref
-                            .read(articleFilterControllerProvider.notifier)
-                            .selectCategory(category),
-                        label: Text(category),
-                        labelStyle: TextStyle(
-                          color: selected
-                              ? const Color(0xFF41270F)
-                              : const Color(0xFFFFE3A0),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                      final buttonWidth = (category.runes.length * 7.5 + 34)
+                          .clamp(82.0, 156.0);
+                      return SizedBox(
+                        width: buttonWidth,
+                        child: MysticFrameButton(
+                          label: category,
+                          selected: selected,
+                          height: 44,
+                          onPressed: selected
+                              ? null
+                              : () => ref
+                                    .read(
+                                      articleFilterControllerProvider.notifier,
+                                    )
+                                    .selectCategory(category),
                         ),
-                        selectedColor: const Color(0xFFE3B955),
-                        backgroundColor: const Color(0xD20B1928),
-                        side: const BorderSide(color: Color(0xFF9A7427)),
-                        showCheckmark: false,
-                        visualDensity: VisualDensity.compact,
                       );
                     },
                   ),

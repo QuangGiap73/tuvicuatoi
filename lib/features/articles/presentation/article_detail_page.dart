@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/assets/mystic_assets.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
@@ -84,17 +83,6 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
                   expandedHeight: 235,
                   backgroundColor: const Color(0xFF07101E),
                   foregroundColor: const Color(0xFFFFD66B),
-                  actions: [
-                    IconButton(
-                      tooltip: 'Chia sẻ bài viết',
-                      onPressed: () => _shareArticle(
-                        context,
-                        article.title,
-                        article.summary,
-                      ),
-                      icon: const Icon(Icons.share_rounded),
-                    ),
-                  ],
                   flexibleSpace: FlexibleSpaceBar(
                     background: Stack(
                       fit: StackFit.expand,
@@ -211,23 +199,6 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
                 ),
               ],
             ),
-    );
-  }
-
-  Future<void> _shareArticle(
-    BuildContext context,
-    String title,
-    String summary,
-  ) async {
-    final box = context.findRenderObject() as RenderBox?;
-    await SharePlus.instance.share(
-      ShareParams(
-        title: title,
-        text: summary.isEmpty ? title : '$title\n\n$summary',
-        sharePositionOrigin: box == null
-            ? null
-            : box.localToGlobal(Offset.zero) & box.size,
-      ),
     );
   }
 }

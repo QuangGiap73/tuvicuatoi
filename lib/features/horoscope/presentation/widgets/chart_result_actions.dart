@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/widgets/mystic_frame_button.dart';
+
 class ChartResultActions extends StatelessWidget {
   const ChartResultActions({
     required this.isSaved,
@@ -18,70 +20,25 @@ class ChartResultActions extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       Expanded(
-        child: _ActionButton(
+        child: MysticFrameButton(
           label: isSaved ? 'ĐÃ LƯU' : 'LƯU LÁ SỐ',
-          icon: isSaved ? Icons.check_circle : Icons.bookmark_add_outlined,
-          filled: true,
+          icon: isSaved
+              ? Icons.check_circle_rounded
+              : Icons.bookmark_add_outlined,
+          selected: true,
           loading: isSaving,
           onPressed: isSaved || isSaving ? null : onSave,
         ),
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: 4),
       Expanded(
-        child: _ActionButton(
+        child: MysticFrameButton(
           label: 'LUẬN GIẢI',
           icon: Icons.menu_book_outlined,
+          selected: true,
           onPressed: onInterpret,
         ),
       ),
     ],
-  );
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.filled = false,
-    this.loading = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool filled;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 44,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: filled ? const Color(0xFF9BECCB) : const Color(0xD9081824),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xFFE0AD46), width: 1.3),
-      ),
-      child: TextButton.icon(
-        onPressed: onPressed,
-        icon: loading
-            ? const SizedBox.square(
-                dimension: 15,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(icon, size: 18),
-        label: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
-        ),
-        style: TextButton.styleFrom(
-          foregroundColor: filled
-              ? const Color(0xFF174F43)
-              : const Color(0xFFFFE8B5),
-        ),
-      ),
-    ),
   );
 }

@@ -13,108 +13,114 @@ class PalaceHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => ConstrainedBox(
-      constraints: BoxConstraints(
-        minHeight: constraints.maxWidth / (1693 / 594),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                MysticAssets.palaceDetailBanner,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                filterQuality: FilterQuality.medium,
+    builder: (context, constraints) {
+      final cacheWidth =
+          (constraints.maxWidth * MediaQuery.devicePixelRatioOf(context))
+              .round();
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: constraints.maxWidth / (1693 / 594),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  MysticAssets.palaceDetailBanner,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  cacheWidth: cacheWidth,
+                  filterQuality: FilterQuality.medium,
+                ),
               ),
-            ),
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xDFFFF1CA),
-                      Color(0x55FFF0C9),
-                      Colors.transparent,
-                    ],
-                    stops: [0, .48, .78],
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xDFFFF1CA),
+                        Color(0x55FFF0C9),
+                        Colors.transparent,
+                      ],
+                      stops: [0, .48, .78],
+                    ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(17, 15, 13, 7),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${palace.name.toUpperCase()} (${palace.branch})',
-                      style: const TextStyle(
-                        color: _ink,
-                        fontFamily: 'serif',
-                        fontSize: 17,
-                        height: 1.05,
-                        fontWeight: FontWeight.w800,
-                        shadows: [
-                          Shadow(color: Color(0xAAFFF1C6), blurRadius: 5),
+              SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(17, 15, 13, 7),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${palace.name.toUpperCase()} (${palace.branch})',
+                        style: const TextStyle(
+                          color: _ink,
+                          fontFamily: 'serif',
+                          fontSize: 17,
+                          height: 1.05,
+                          fontWeight: FontWeight.w800,
+                          shadows: [
+                            Shadow(color: Color(0xAAFFF1C6), blurRadius: 5),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 255),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: 'Hành ${palace.element}'),
+                              if (palace.mainStars.isNotEmpty) ...[
+                                const TextSpan(text: '  •  Chính tinh: '),
+                                TextSpan(
+                                  text: palace.mainStars
+                                      .map((star) => star.name)
+                                      .join(', '),
+                                  style: const TextStyle(
+                                    color: Color(0xFFB42D39),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          style: const TextStyle(
+                            color: _mutedInk,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            shadows: [
+                              Shadow(color: Color(0xAAFFF1C6), blurRadius: 4),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        spacing: 5,
+                        children: [
+                          if (palace.isThan) const _TinyBadge('THÂN CƯ'),
+                          if (palace.vongTrangSinh.isNotEmpty)
+                            _TinyBadge(palace.vongTrangSinh.toUpperCase()),
+                          if (palace.thangHan.isNotEmpty)
+                            _TinyBadge(palace.thangHan.toUpperCase()),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 255),
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: 'Hành ${palace.element}'),
-                            if (palace.mainStars.isNotEmpty) ...[
-                              const TextSpan(text: '  •  Chính tinh: '),
-                              TextSpan(
-                                text: palace.mainStars
-                                    .map((star) => star.name)
-                                    .join(', '),
-                                style: const TextStyle(
-                                  color: Color(0xFFB42D39),
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        style: const TextStyle(
-                          color: _mutedInk,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          shadows: [
-                            Shadow(color: Color(0xAAFFF1C6), blurRadius: 4),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Wrap(
-                      spacing: 5,
-                      children: [
-                        if (palace.isThan) const _TinyBadge('THÂN CƯ'),
-                        if (palace.vongTrangSinh.isNotEmpty)
-                          _TinyBadge(palace.vongTrangSinh.toUpperCase()),
-                        if (palace.thangHan.isNotEmpty)
-                          _TinyBadge(palace.thangHan.toUpperCase()),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }
 
@@ -165,38 +171,29 @@ class StarsGroupSection extends StatelessWidget {
   final List<String> badStars;
 
   @override
-  Widget build(BuildContext context) {
-    return PalacePaperSection(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final luckyGroup = _StarGroup(
-            title: 'Cát tinh',
-            stars: luckyStars,
-            favorable: true,
-          );
-          final badGroup = _StarGroup(
-            title: 'Sát tinh',
-            stars: badStars,
-            favorable: false,
-          );
-          if (constraints.maxWidth < 320) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [luckyGroup, const SizedBox(height: 10), badGroup],
-            );
-          }
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: luckyGroup),
-              const SizedBox(width: 8),
-              Expanded(child: badGroup),
-            ],
-          );
-        },
+  Widget build(BuildContext context) => Column(
+    children: [
+      PalacePaperSection(
+        title: 'Cát tinh',
+        child: _StarGroup(
+          title: 'Cát tinh',
+          stars: luckyStars,
+          favorable: true,
+          hideTitle: true,
+        ),
       ),
-    );
-  }
+      const SizedBox(height: 9),
+      PalacePaperSection(
+        title: 'Sát tinh',
+        child: _StarGroup(
+          title: 'Sát tinh',
+          stars: badStars,
+          favorable: false,
+          hideTitle: true,
+        ),
+      ),
+    ],
+  );
 }
 
 List<String> _featuredNames(List<String> luckyStars, List<String> badStars) => [
@@ -209,18 +206,22 @@ class _StarGroup extends StatelessWidget {
     required this.title,
     required this.stars,
     required this.favorable,
+    this.hideTitle = false,
   });
 
   final String title;
   final List<String> stars;
   final bool favorable;
+  final bool hideTitle;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      _SectionLabel(title, danger: !favorable),
-      const SizedBox(height: 6),
+      if (!hideTitle) ...[
+        _SectionLabel(title, danger: !favorable),
+        const SizedBox(height: 6),
+      ],
       if (stars.isEmpty)
         const Text('Không có', style: TextStyle(color: _mutedInk, fontSize: 11))
       else
@@ -343,6 +344,42 @@ class FreeIntroductionSection extends StatelessWidget {
   );
 }
 
+class PalaceSummarySection extends StatelessWidget {
+  const PalaceSummarySection({
+    required this.palace,
+    required this.relatedPalaces,
+    super.key,
+  });
+
+  final ChartPalace palace;
+  final List<ChartPalace> relatedPalaces;
+
+  @override
+  Widget build(BuildContext context) {
+    final related = relatedPalaces
+        .where((item) => item.id != palace.id)
+        .map((item) => item.name)
+        .take(3)
+        .join(', ');
+    final stars = palace.mainStars.map((star) => star.name).join(', ');
+    final text = StringBuffer(
+      '${palace.name} tại ${palace.branch} thuộc hành ${palace.element}',
+    );
+    if (stars.isNotEmpty) text.write(', có chính tinh $stars tọa thủ');
+    if (related.isNotEmpty) {
+      text.write('. Tam phương tứ chính liên kết với $related');
+    }
+    text.write(', tạo thành hệ thống tương hỗ khi luận giải cung này.');
+    return PalacePaperSection(
+      title: 'Tóm tắt luận giải',
+      child: Text(
+        text.toString(),
+        style: const TextStyle(color: _ink, fontSize: 12.5, height: 1.5),
+      ),
+    );
+  }
+}
+
 class PalacePaperSection extends StatelessWidget {
   const PalacePaperSection({required this.child, this.title, super.key});
   final String? title;
@@ -351,16 +388,16 @@ class PalacePaperSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.fromLTRB(9, 7, 9, 8),
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
     decoration: BoxDecoration(
-      color: const Color(0xBFFFF3D4),
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: const Color(0x66B8781B)),
+      color: const Color(0xF7FFF1CF),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFD09A38), width: 1.25),
       boxShadow: const [
         BoxShadow(
-          color: Color(0x1F68400D),
-          blurRadius: 3,
-          offset: Offset(0, 1),
+          color: Color(0x4D000000),
+          blurRadius: 5,
+          offset: Offset(0, 2),
         ),
       ],
     ),
@@ -368,20 +405,56 @@ class PalacePaperSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (title != null) ...[
-          Text(
-            title!,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Icon(
+                _sectionIcon(title!),
+                size: 20,
+                color: _sectionColor(title!),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 4,
+                child: Text(
+                  title!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontFamily: 'serif',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                flex: 2,
+                child: Divider(color: Color(0x88B88637), height: 1),
+              ),
+            ],
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
         ],
         child,
       ],
     ),
   );
+}
+
+IconData _sectionIcon(String title) {
+  if (title.contains('Cát')) return Icons.energy_savings_leaf_rounded;
+  if (title.contains('Sát')) return Icons.colorize_rounded;
+  if (title.contains('Tam phương')) return Icons.temple_buddhist_rounded;
+  if (title.contains('Tóm tắt')) return Icons.article_outlined;
+  if (title.contains('Giới thiệu')) return Icons.card_giftcard_rounded;
+  return Icons.auto_awesome_rounded;
+}
+
+Color _sectionColor(String title) {
+  if (title.contains('Cát')) return const Color(0xFF338A58);
+  if (title.contains('Sát')) return const Color(0xFFB9363A);
+  return const Color(0xFF9A681D);
 }
 
 class PalaceStarChip extends StatelessWidget {
@@ -442,13 +515,32 @@ class _MainStarTileState extends State<_MainStarTile> {
           spacing: 6,
           runSpacing: 5,
           children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF9A2C36), Color(0xFF671F29)],
+                ),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: const Color(0xFFD9A440), width: 1.3),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: Color(0xFFFFD978),
+                size: 22,
+              ),
+            ),
             Text(
               star.name,
               style: const TextStyle(
                 color: _ink,
                 fontFamily: 'serif',
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
               ),
             ),
             if (star.tag.isNotEmpty) _StarBadge(star.tag),

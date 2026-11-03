@@ -511,12 +511,6 @@ class _CheckInPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = state.activeActions.contains('checkin');
-    final dayCount = info.checkInDays.length;
-    final currentDay = dayCount == 0
-        ? 0
-        : (info.hasCheckedInToday ? info.streakDays : info.streakDays + 1)
-              .clamp(1, dayCount)
-              .toInt();
     return _MysticPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,11 +551,8 @@ class _CheckInPanel extends ConsumerWidget {
             child: Row(
               children: info.checkInDays
                   .map(
-                    (day) => _CheckInDayTile(
-                      day: day,
-                      completed: day.day <= info.streakDays,
-                      isCurrentDay: day.day == currentDay,
-                    ),
+                    (day) =>
+                        _CheckInDayTile(day: day, status: info.statusFor(day)),
                   )
                   .toList(),
             ),
@@ -590,17 +581,14 @@ class _CheckInPanel extends ConsumerWidget {
 }
 
 class _CheckInDayTile extends StatelessWidget {
-  const _CheckInDayTile({
-    required this.day,
-    required this.completed,
-    required this.isCurrentDay,
-  });
+  const _CheckInDayTile({required this.day, required this.status});
   final CheckInDay day;
-  final bool completed;
-  final bool isCurrentDay;
+  final CheckInDayStatus status;
 
   @override
   Widget build(BuildContext context) {
+    final completed = status == CheckInDayStatus.completed;
+    final isCurrentDay = status == CheckInDayStatus.current;
     final highlighted = completed || isCurrentDay;
     return Container(
       width: 55,

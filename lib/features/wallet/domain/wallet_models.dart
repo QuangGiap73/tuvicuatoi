@@ -1,12 +1,16 @@
+enum CheckInDayStatus { completed, current, missed, upcoming }
+
 class CheckInDay {
   const CheckInDay({
     required this.day,
     required this.rewardCoins,
     this.bonusItem = '',
+    this.status,
   });
   final int day;
   final int rewardCoins;
   final String bonusItem;
+  final CheckInDayStatus? status;
 
   factory CheckInDay.fromJson(Map<String, dynamic> json) => CheckInDay(
     day: (json['day'] as num?)?.toInt() ?? 0,
@@ -15,6 +19,7 @@ class CheckInDay {
         (json['rewardCoins'] as num?)?.toInt() ??
         0,
     bonusItem: json['bonus_item']?.toString() ?? '',
+    status: _checkInStatus(json),
   );
 }
 
@@ -74,23 +79,81 @@ class EarnCoinsInfo {
     required this.streakDays,
     required this.checkInDays,
     required this.missions,
+    this.currentCheckInDay,
+    this.completedCheckInDays = const {},
+    this.missedCheckInDays = const {},
+    this.hasExplicitCheckInSchedule = false,
   });
   final int balance;
   final bool hasCheckedInToday;
   final int streakDays;
   final List<CheckInDay> checkInDays;
   final List<CoinMission> missions;
+  final int? currentCheckInDay;
+  final Set<int> completedCheckInDays;
+  final Set<int> missedCheckInDays;
+  final bool hasExplicitCheckInSchedule;
 
-  factory EarnCoinsInfo.fromJson(Map<String, dynamic> json) => EarnCoinsInfo(
-    balance: (json['balance'] as num?)?.toInt() ?? 0,
-    hasCheckedInToday: json['hasCheckedInToday'] == true,
-    streakDays: (json['streakDays'] as num?)?.toInt() ?? 0,
-    checkInDays: _maps(json['checkInDays']).map(CheckInDay.fromJson).toList(),
-    missions: _maps(json['missions'])
-        .map(CoinMission.fromJson)
-        .where((mission) => mission.code.isNotEmpty)
-        .toList(),
-  );
+  factory EarnCoinsInfo.fromJson(Map<String, dynamic> json) {
+    final days = _maps(json['checkInDays']).map(CheckInDay.fromJson).toList();
+    final completed = _dayNumbers(
+      json['completedCheckInDays'] ??
+          json['checkedInDays'] ??
+          json['completedDays'],
+    );
+    final missed = _dayNumbers(
+      json['missedCheckInDays'] ?? json['skippedDays'] ?? json['missedDays'],
+    );
+    final current = _integerOrNull(
+      json['currentCheckInDay'] ??
+          json['currentDay'] ??
+          json['todayCheckInDay'] ??
+          json['cycleDay'],
+    );
+    final itemHasStatus = days.any((day) => day.status != null);
+    return EarnCoinsInfo(
+      balance: (json['balance'] as num?)?.toInt() ?? 0,
+      hasCheckedInToday: json['hasCheckedInToday'] == true,
+      streakDays: (json['streakDays'] as num?)?.toInt() ?? 0,
+      checkInDays: days,
+      missions: _maps(json['missions'])
+          .map(CoinMission.fromJson)
+          .where((mission) => mission.code.isNotEmpty)
+          .toList(),
+      currentCheckInDay: current ?? _currentDayFromItems(days),
+      completedCheckInDays: Set.unmodifiable(completed),
+      missedCheckInDays: Set.unmodifiable(missed),
+      hasExplicitCheckInSchedule:
+          itemHasStatus ||
+          current != null ||
+          completed.isNotEmpty ||
+          missed.isNotEmpty,
+    );
+  }
+
+  CheckInDayStatus statusFor(CheckInDay day) {
+    if (day.status != null) return day.status!;
+    if (completedCheckInDays.contains(day.day)) {
+      return CheckInDayStatus.completed;
+    }
+    if (missedCheckInDays.contains(day.day)) return CheckInDayStatus.missed;
+    if (day.day == currentCheckInDay) {
+      return hasCheckedInToday
+          ? CheckInDayStatus.completed
+          : CheckInDayStatus.current;
+    }
+    if (hasExplicitCheckInSchedule) return CheckInDayStatus.upcoming;
+    if (day.day <= streakDays) return CheckInDayStatus.completed;
+    final legacyCurrent = checkInDays.isEmpty
+        ? 0
+        : (hasCheckedInToday ? streakDays : streakDays + 1).clamp(
+            1,
+            checkInDays.length,
+          );
+    return day.day == legacyCurrent
+        ? CheckInDayStatus.current
+        : CheckInDayStatus.upcoming;
+  }
 }
 
 class CoinTransaction {
@@ -371,6 +434,64 @@ class VoucherValidationResult {
 List<Map<String, dynamic>> _maps(Object? value) => value is List
     ? value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
     : const [];
+
+CheckInDayStatus? _checkInStatus(Map<String, dynamic> json) {
+  if (json['isCompleted'] == true ||
+      json['completed'] == true ||
+      json['isChecked'] == true ||
+      json['checked'] == true ||
+      json['claimed'] == true) {
+    return CheckInDayStatus.completed;
+  }
+  if (json['isCurrent'] == true ||
+      json['current'] == true ||
+      json['isToday'] == true) {
+    return CheckInDayStatus.current;
+  }
+  if (json['isMissed'] == true ||
+      json['missed'] == true ||
+      json['skipped'] == true) {
+    return CheckInDayStatus.missed;
+  }
+  final status = (json['status'] ?? json['checkInStatus'])
+      ?.toString()
+      .trim()
+      .toLowerCase();
+  return switch (status) {
+    'completed' ||
+    'checked' ||
+    'claimed' ||
+    'done' => CheckInDayStatus.completed,
+    'current' || 'today' || 'available' => CheckInDayStatus.current,
+    'missed' || 'skipped' || 'expired' => CheckInDayStatus.missed,
+    'upcoming' || 'future' || 'locked' => CheckInDayStatus.upcoming,
+    _ => null,
+  };
+}
+
+int? _integerOrNull(Object? value) =>
+    value is num ? value.toInt() : int.tryParse(value?.toString().trim() ?? '');
+
+Set<int> _dayNumbers(Object? value) {
+  if (value is! List) return const {};
+  return value
+      .map((item) {
+        if (item is Map) {
+          return _integerOrNull(item['day'] ?? item['dayNumber']);
+        }
+        return _integerOrNull(item);
+      })
+      .whereType<int>()
+      .where((day) => day > 0)
+      .toSet();
+}
+
+int? _currentDayFromItems(List<CheckInDay> days) {
+  for (final day in days) {
+    if (day.status == CheckInDayStatus.current) return day.day;
+  }
+  return null;
+}
 
 double _double(Object? value) => value is num
     ? value.toDouble()

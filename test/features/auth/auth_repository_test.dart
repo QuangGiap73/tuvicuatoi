@@ -245,4 +245,18 @@ void main() {
     expect(expires, 15);
     expect(token, 'recovery-token');
   });
+
+  test('record AI question posts without a request body', () async {
+    adapter.onPost(
+      '/auth/record-question/',
+      (server) => server.reply(200, {
+        'success': true,
+        'dailyQuestionsUsed': 1,
+        'dailyAiQuestionsLeft': 2,
+        'hasUnlimitedAi': false,
+      }),
+    );
+
+    await repository.recordAiQuestion();
+  });
 }

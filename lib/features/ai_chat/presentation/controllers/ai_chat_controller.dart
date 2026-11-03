@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_provider.dart';
+import '../../../auth/data/auth_repository.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../horoscope/data/chart_repository.dart';
 import '../../../horoscope/domain/chart_result.dart';
@@ -266,7 +267,13 @@ class AiChatController extends Notifier<AiChatState> {
             chartId: chart.id,
             messages: state.messages,
           );
-      await ref.read(authControllerProvider.notifier).refreshProfile();
+      try {
+        await ref.read(authRepositoryProvider).recordAiQuestion();
+        await ref.read(authControllerProvider.notifier).refreshProfile();
+      } on AuthException {
+        // The answer was completed successfully. A usage tracking failure must
+        // not mark the user's message as failed or trigger a duplicate retry.
+      }
       return true;
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) return false;

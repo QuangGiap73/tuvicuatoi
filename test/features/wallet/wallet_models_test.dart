@@ -36,6 +36,62 @@ void main() {
     expect(info.missions.single.executionRemainingSeconds, 15);
   });
 
+  test('keeps a skipped check-in day normal and advances current day', () {
+    final info = EarnCoinsInfo.fromJson({
+      'balance': 100,
+      'hasCheckedInToday': false,
+      'streakDays': 1,
+      'currentCheckInDay': 4,
+      'completedCheckInDays': [1, 3],
+      'missedCheckInDays': [2],
+      'checkInDays': [
+        for (var day = 1; day <= 7; day++)
+          {'day': day, 'rewardCoins': day * 10},
+      ],
+      'missions': [],
+    });
+
+    expect(info.statusFor(info.checkInDays[0]), CheckInDayStatus.completed);
+    expect(info.statusFor(info.checkInDays[1]), CheckInDayStatus.missed);
+    expect(info.statusFor(info.checkInDays[2]), CheckInDayStatus.completed);
+    expect(info.statusFor(info.checkInDays[3]), CheckInDayStatus.current);
+    expect(info.statusFor(info.checkInDays[4]), CheckInDayStatus.upcoming);
+  });
+
+  test('parses per-day check-in status aliases', () {
+    final info = EarnCoinsInfo.fromJson({
+      'hasCheckedInToday': false,
+      'streakDays': 0,
+      'checkInDays': [
+        {'day': 1, 'rewardCoins': 10, 'status': 'completed'},
+        {'day': 2, 'rewardCoins': 20, 'skipped': true},
+        {'day': 3, 'rewardCoins': 30, 'isCurrent': true},
+        {'day': 4, 'rewardCoins': 40, 'status': 'upcoming'},
+      ],
+      'missions': [],
+    });
+
+    expect(info.statusFor(info.checkInDays[0]), CheckInDayStatus.completed);
+    expect(info.statusFor(info.checkInDays[1]), CheckInDayStatus.missed);
+    expect(info.statusFor(info.checkInDays[2]), CheckInDayStatus.current);
+    expect(info.statusFor(info.checkInDays[3]), CheckInDayStatus.upcoming);
+  });
+
+  test('legacy check-in payload keeps the previous streak behavior', () {
+    final info = EarnCoinsInfo.fromJson({
+      'hasCheckedInToday': false,
+      'streakDays': 2,
+      'checkInDays': [
+        for (var day = 1; day <= 7; day++) {'day': day, 'rewardCoins': 10},
+      ],
+      'missions': [],
+    });
+
+    expect(info.statusFor(info.checkInDays[0]), CheckInDayStatus.completed);
+    expect(info.statusFor(info.checkInDays[1]), CheckInDayStatus.completed);
+    expect(info.statusFor(info.checkInDays[2]), CheckInDayStatus.current);
+  });
+
   test('parses transaction amount and package values from backend', () {
     final transaction = CoinTransaction.fromJson({
       'id': 'tx-1',

@@ -39,10 +39,28 @@ class PalaceDetailPage extends ConsumerWidget {
         : screenWidth >= 430
         ? 16.0
         : 12.0;
-    final bodyPadding = screenWidth <= 360 ? 12.0 : 14.0;
-
     return Scaffold(
       backgroundColor: const Color(0xFF03101E),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: ColoredBox(
+          color: const Color(0xF2051422),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(framePadding, 8, framePadding, 10),
+            child: Center(
+              heightFactor: 1,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: _BottomActions(
+                  state: state,
+                  onAskAi: () => _openAi(context, ref, state),
+                  onInterpret: () => _openInterpretation(context, ref, state),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -61,138 +79,89 @@ class PalaceDetailPage extends ConsumerWidget {
               children: [
                 _PalaceDetailAppBar(onBack: context.pop),
                 Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: CustomScrollView(
-                          key: ValueKey(
-                            'palace-${detail.chart.id}-${detail.palace.id}',
-                          ),
-                          slivers: [
-                            SliverPadding(
-                              padding: EdgeInsets.fromLTRB(
-                                framePadding,
-                                0,
-                                framePadding,
-                                18,
+                  child: CustomScrollView(
+                    key: ValueKey(
+                      'palace-${detail.chart.id}-${detail.palace.id}',
+                    ),
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          framePadding,
+                          0,
+                          framePadding,
+                          20,
+                        ),
+                        sliver: SliverList.list(
+                          children: [
+                            Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 680,
+                                ),
+                                child: PalaceHeroCard(palace: detail.palace),
                               ),
-                              sliver: SliverToBoxAdapter(
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 370,
-                                    ),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          PalaceHeroCard(palace: detail.palace),
-                                          const SizedBox(height: 7),
-                                          Container(
-                                            width: double.infinity,
-                                            padding: EdgeInsets.fromLTRB(
-                                              bodyPadding,
-                                              6,
-                                              bodyPadding,
-                                              10,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF7E8C4),
-                                              borderRadius:
-                                                  BorderRadius.circular(13),
-                                              border: Border.all(
-                                                color: const Color(0xFFC38821),
-                                                width: 1.3,
-                                              ),
-                                              boxShadow: const [
-                                                BoxShadow(
-                                                  color: Color(0x66000000),
-                                                  blurRadius: 7,
-                                                  offset: Offset(0, 3),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                MainStarsSection(
-                                                  stars:
-                                                      detail.palace.mainStars,
-                                                  rules: state.rules,
-                                                ),
-                                                const SizedBox(height: 5),
-                                                StarsGroupSection(
-                                                  luckyStars:
-                                                      detail.palace.luckyStars,
-                                                  badStars:
-                                                      detail.palace.badStars,
-                                                ),
-                                                const SizedBox(height: 5),
-                                                if (state
-                                                    .relatedPalaces
-                                                    .isNotEmpty)
-                                                  RelatedPalacesSection(
-                                                    palaces:
-                                                        state.relatedPalaces,
-                                                    rules: state.triadRules,
-                                                  ),
-                                                const SizedBox(height: 5),
-                                                FreeIntroductionSection(
-                                                  summary: state.freeSummary,
-                                                ),
-                                                if (state.isLoading) ...[
-                                                  const SizedBox(height: 12),
-                                                  const SizedBox.square(
-                                                    dimension: 22,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color: Color(
-                                                            0xFF9A681D,
-                                                          ),
-                                                        ),
-                                                  ),
-                                                ],
-                                                if (state.errorMessage !=
-                                                    null) ...[
-                                                  const SizedBox(height: 8),
-                                                  _InlineError(
-                                                    message:
-                                                        state.errorMessage!,
-                                                    onRetry: () => ref
-                                                        .read(
-                                                          palaceDetailControllerProvider
-                                                              .notifier,
-                                                        )
-                                                        .retry(),
-                                                  ),
-                                                ],
-                                                const SizedBox(height: 10),
-                                                _BottomActions(
-                                                  state: state,
-                                                  onAskAi: () => _openAi(
-                                                    context,
-                                                    ref,
-                                                    state,
-                                                  ),
-                                                  onInterpret: () =>
-                                                      _openInterpretation(
-                                                        context,
-                                                        ref,
-                                                        state,
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                            ),
+                            const SizedBox(height: 9),
+                            _SectionWidth(
+                              child: MainStarsSection(
+                                stars: detail.palace.mainStars,
+                                rules: state.rules,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            _SectionWidth(
+                              child: StarsGroupSection(
+                                luckyStars: detail.palace.luckyStars,
+                                badStars: detail.palace.badStars,
+                              ),
+                            ),
+                            if (state.relatedPalaces.isNotEmpty) ...[
+                              const SizedBox(height: 9),
+                              _SectionWidth(
+                                child: RelatedPalacesSection(
+                                  palaces: state.relatedPalaces,
+                                  rules: state.triadRules,
+                                ),
+                              ),
+                              const SizedBox(height: 9),
+                              _SectionWidth(
+                                child: PalaceSummarySection(
+                                  palace: detail.palace,
+                                  relatedPalaces: state.relatedPalaces,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 9),
+                            _SectionWidth(
+                              child: FreeIntroductionSection(
+                                summary: state.freeSummary,
+                              ),
+                            ),
+                            if (state.isLoading) ...[
+                              const SizedBox(height: 12),
+                              const Center(
+                                child: SizedBox.square(
+                                  dimension: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFFFD978),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
+                            if (state.errorMessage != null) ...[
+                              const SizedBox(height: 9),
+                              _SectionWidth(
+                                child: _InlineError(
+                                  message: state.errorMessage!,
+                                  onRetry: () => ref
+                                      .read(
+                                        palaceDetailControllerProvider.notifier,
+                                      )
+                                      .retry(),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -247,35 +216,90 @@ class PalaceDetailPage extends ConsumerWidget {
   }
 }
 
+class _SectionWidth extends StatelessWidget {
+  const _SectionWidth({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 680),
+      child: SizedBox(width: double.infinity, child: child),
+    ),
+  );
+}
+
 class _PalaceDetailAppBar extends StatelessWidget {
   const _PalaceDetailAppBar({required this.onBack});
   final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 58,
-    child: Row(
+    width: double.infinity,
+    height: 76,
+    child: Stack(
+      alignment: Alignment.center,
       children: [
-        const SizedBox(width: 3),
-        IconButton(
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: const Color(0xFFFFD978),
+        const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Chi tiết cung',
+              style: TextStyle(
+                color: Color(0xFFFFE1A0),
+                fontFamily: 'serif',
+                fontSize: 25,
+                fontWeight: FontWeight.w900,
+                shadows: [Shadow(color: Colors.black, blurRadius: 5)],
+              ),
+            ),
+            SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 45,
+                  child: Divider(color: Color(0xFFFFD978), height: 1),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Icon(
+                    Icons.local_florist_rounded,
+                    size: 18,
+                    color: Color(0xFFFFD978),
+                  ),
+                ),
+                SizedBox(
+                  width: 45,
+                  child: Divider(color: Color(0xFFFFD978), height: 1),
+                ),
+              ],
+            ),
+          ],
         ),
-        const Expanded(
-          child: Text(
-            'Chi tiết cung',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFFFFE1A0),
-              fontFamily: 'serif',
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              shadows: [Shadow(color: Colors.black, blurRadius: 5)],
+        Positioned(
+          left: 8,
+          top: 14,
+          child: Material(
+            color: const Color(0xCC0A1C2A),
+            shape: const CircleBorder(
+              side: BorderSide(color: Color(0xFFD6A33D), width: 1.2),
+            ),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onBack,
+              child: const SizedBox.square(
+                dimension: 44,
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 21,
+                  color: Color(0xFFFFD978),
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 51),
       ],
     ),
   );
