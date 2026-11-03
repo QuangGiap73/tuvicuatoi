@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
+import '../../../../app/router/auth_route_policy.dart';
 import '../../../../core/theme/mystic_colors.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/auth_layout.dart';
@@ -37,7 +38,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final auth = ref.watch(authControllerProvider);
     final isLoading = auth.isLoading;
     return AuthLayout(
-      onClose: () => context.go(AppRoute.welcome),
+      onClose: () => context.go(_returnLocation(context)),
       title: 'Đăng ký ',
       accentTitle: 'nhanh',
       subtitle:
@@ -50,7 +51,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             children: [
               AuthSwitcher(
                 isLogin: false,
-                onLogin: isLoading ? null : () => context.go(AppRoute.login),
+                onLogin: isLoading
+                    ? null
+                    : () => context.go(_authLocation(context, AppRoute.login)),
                 onRegister: null,
               ),
               const SizedBox(height: 13),
@@ -206,6 +209,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Future<void> _signInWithGoogle() =>
       ref.read(authControllerProvider.notifier).loginWithGoogle();
+
+  String _returnLocation(BuildContext context) =>
+      AuthRoutePolicy.safeRedirect(
+        GoRouterState.of(context).uri.queryParameters['redirect'],
+      ) ??
+      AppRoute.home;
+
+  String _authLocation(BuildContext context, String path) {
+    final redirect = AuthRoutePolicy.safeRedirect(
+      GoRouterState.of(context).uri.queryParameters['redirect'],
+    );
+    return redirect == null
+        ? path
+        : '$path?redirect=${Uri.encodeQueryComponent(redirect)}';
+  }
 }
 
 class _PasswordStrength extends StatelessWidget {

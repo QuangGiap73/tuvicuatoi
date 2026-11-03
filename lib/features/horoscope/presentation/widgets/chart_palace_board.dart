@@ -803,16 +803,16 @@ class _CenterSummary extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(
               19 * scale,
-              24 * scale,
+              11 * scale,
               19 * scale,
-              22 * scale,
+              9 * scale,
             ),
             child: Column(
               children: [
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 10 * scale,
-                    vertical: 2 * scale,
+                    vertical: 1 * scale,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xBFFFF0C8),
@@ -823,13 +823,13 @@ class _CenterSummary extends StatelessWidget {
                     'LÁ SỐ TỬ VI',
                     style: TextStyle(
                       color: const Color(0xFF79532B),
-                      fontSize: 8.5 * scale,
+                      fontSize: 12 * scale,
                       fontWeight: FontWeight.w800,
                       letterSpacing: .8,
                     ),
                   ),
                 ),
-                SizedBox(height: 4 * scale),
+                SizedBox(height: 2 * scale),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -838,7 +838,7 @@ class _CenterSummary extends StatelessWidget {
                     style: TextStyle(
                       color: const Color(0xFF3A2514),
                       fontFamily: 'serif',
-                      fontSize: 23 * scale,
+                      fontSize: 27 * scale,
                       height: 1,
                       fontWeight: FontWeight.w900,
                     ),
@@ -852,29 +852,21 @@ class _CenterSummary extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: const Color(0xFF4B3823),
-                    fontSize: 7.8 * scale,
+                    fontSize: 11.5 * scale,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
-                  'Giờ ${result.hourBranch}  •  ${result.gender}',
+                  'Giờ ${result.hourBranch}  •  ${result.gender}  •  Năm ${result.namXem}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: const Color(0xFF4B3823),
-                    fontSize: 7.5 * scale,
+                    fontSize: 10.5 * scale,
                   ),
                 ),
-                Text(
-                  'Năm xem: ${result.namXem}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: const Color(0xFF4B3823),
-                    fontSize: 7.5 * scale,
-                  ),
-                ),
-                Divider(color: const Color(0xFFB98A42), height: 14 * scale),
+                Divider(color: const Color(0xFFB98A42), height: 7 * scale),
                 _InfoLine('Âm dương', result.amDuong, scale),
                 _InfoLine('Bản mệnh', result.menh, scale),
                 _InfoLine('Cục số', result.cuc, scale),
@@ -884,12 +876,12 @@ class _CenterSummary extends StatelessWidget {
                 const Spacer(),
                 Text(
                   result.menhCucBinhHoa,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: const Color(0xFF805B2E),
-                    fontSize: 7.3 * scale,
+                    fontSize: 10.5 * scale,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -911,29 +903,41 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.symmetric(vertical: 1.3 * scale),
+    padding: EdgeInsets.symmetric(vertical: .2 * scale),
     child: Row(
       children: [
         Expanded(
-          child: Text(
-            '$label:',
-            style: TextStyle(
-              color: const Color(0xFF65492E),
-              fontSize: 7.5 * scale,
-              fontWeight: FontWeight.w600,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$label:',
+                maxLines: 1,
+                style: TextStyle(
+                  color: const Color(0xFF65492E),
+                  fontSize: 11 * scale,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ),
+        SizedBox(width: 3 * scale),
         Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: const Color(0xFF8C2A22),
-              fontSize: 7.5 * scale,
-              fontWeight: FontWeight.w800,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: TextStyle(
+                  color: const Color(0xFF8C2A22),
+                  fontSize: 11 * scale,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ),

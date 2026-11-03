@@ -97,6 +97,17 @@ class WelcomePage extends ConsumerWidget {
                                       .read(authControllerProvider.notifier)
                                       .loginWithGoogle(),
                           ),
+                          const SizedBox(height: 11),
+                          TextButton.icon(
+                            onPressed: isLoading
+                                ? null
+                                : () => context.go(AppRoute.home),
+                            icon: const Icon(Icons.explore_outlined, size: 17),
+                            label: const Text('Khám phá không cần đăng nhập'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFE7D397),
+                            ),
+                          ),
                           const SizedBox(height: 25),
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.center,

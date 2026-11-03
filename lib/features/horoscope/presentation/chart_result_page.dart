@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
 import '../../interpretation/domain/interpretation_models.dart';
+import '../../auth/presentation/require_authentication.dart';
 import '../../interpretation/presentation/controllers/interpretation_controller.dart';
 import '../../palace_detail/domain/palace_detail_models.dart';
 import '../../palace_detail/presentation/controllers/palace_detail_controller.dart';
@@ -93,6 +94,13 @@ class ChartResultPage extends ConsumerWidget {
   }
 
   Future<void> _save(BuildContext context, WidgetRef ref) async {
+    if (!requireAuthentication(
+      context,
+      ref,
+      reason: 'Đăng nhập để lưu và đồng bộ lá số của bạn.',
+    )) {
+      return;
+    }
     final success = await ref
         .read(chartGenerationControllerProvider.notifier)
         .save();

@@ -9,6 +9,9 @@ import '../../../core/assets/mystic_assets.dart';
 import '../../../core/theme/mystic_colors.dart';
 import '../../../core/theme/mystic_spacing.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
+import '../../auth/presentation/login_required_dialog.dart';
+import '../../../app/router/auth_route_policy.dart';
 import 'providers/home_providers.dart';
 import 'widgets/home_daily_message_card.dart';
 import 'widgets/home_destiny_discovery_card.dart';
@@ -45,8 +48,8 @@ class HomePage extends ConsumerWidget {
     ),
     appBar: _HomeAppBarConnector(
       onMenuPressed: () => _showComingSoon(context, 'Menu'),
-      onWalletPressed: () => context.go(AppRoute.wallet),
-      onAddCoinPressed: () => context.go(AppRoute.wallet),
+      onWalletPressed: () => _openWallet(context, ref),
+      onAddCoinPressed: () => _openWallet(context, ref),
     ),
     body: RefreshIndicator(
       color: MysticColors.gold,
@@ -72,7 +75,7 @@ class HomePage extends ConsumerWidget {
           HomeFeaturedGrid(
             onChartPressed: () => context.go(AppRoute.horoscope),
             onTodayPressed: () => context.go(AppRoute.dailyFortune),
-            onChatPressed: () => context.go(AppRoute.chat),
+            onChatPressed: () => _openChat(context, ref),
             onArticlesPressed: () => context.push(AppRoute.articles),
             onViewAllPressed: () => _showComingSoon(context, 'Tính năng'),
           ),
@@ -87,6 +90,38 @@ class HomePage extends ConsumerWidget {
           content: Text('$feature sẽ được hoàn thiện ở bước tiếp theo.'),
         ),
       );
+
+  Future<void> _openChat(BuildContext context, WidgetRef ref) async {
+    if (ref.read(authControllerProvider).asData?.value != null) {
+      context.go(AppRoute.chat);
+      return;
+    }
+    final shouldLogin = await showLoginRequiredDialog(
+      context,
+      icon: Icons.chat_bubble_outline_rounded,
+      message:
+          'Đăng nhập để hỏi Tử Vi AI, sử dụng lá số cá nhân và lưu lại lịch sử trò chuyện.',
+    );
+    if (shouldLogin == true && context.mounted) {
+      context.push(AuthRoutePolicy.loginLocation(AppRoute.chat));
+    }
+  }
+
+  Future<void> _openWallet(BuildContext context, WidgetRef ref) async {
+    if (ref.read(authControllerProvider).asData?.value != null) {
+      context.go(AppRoute.wallet);
+      return;
+    }
+    final shouldLogin = await showLoginRequiredDialog(
+      context,
+      icon: Icons.account_balance_wallet_outlined,
+      message:
+          'Đăng nhập để xem số dư Xu, điểm danh, làm nhiệm vụ và quản lý giao dịch của bạn.',
+    );
+    if (shouldLogin == true && context.mounted) {
+      context.push(AuthRoutePolicy.loginLocation(AppRoute.wallet));
+    }
+  }
 }
 
 class _HomeAppBarConnector extends ConsumerWidget

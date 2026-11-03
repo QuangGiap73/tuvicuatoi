@@ -25,6 +25,7 @@ import '../../features/wallet/presentation/coin_packages_page.dart';
 import '../../features/wallet/presentation/coin_transactions_page.dart';
 import '../../features/wallet/presentation/payment_orders_page.dart';
 import 'app_shell.dart';
+import 'auth_route_policy.dart';
 
 abstract final class AppRoute {
   static const home = '/';
@@ -63,20 +64,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == AppRoute.register ||
           location == AppRoute.forgotPassword;
       final isGate = location == AppRoute.authGate;
-      final isGuestChat = location == AppRoute.chat;
       final isPasswordRecovery = location == AppRoute.forgotPassword;
 
       if (auth.isLoading) {
-        return isAuthRoute || isGate || isGuestChat ? null : AppRoute.authGate;
+        return isAuthRoute || isGate ? null : AppRoute.authGate;
       }
       final isAuthenticated = auth.asData?.value != null;
       if (isAuthenticated) {
         if (isPasswordRecovery) return null;
         if (!isAuthRoute && !isGate) return null;
-        final redirect = state.uri.queryParameters['redirect'];
-        return redirect == AppRoute.chat ? AppRoute.chat : AppRoute.home;
+        return AuthRoutePolicy.safeRedirect(
+              state.uri.queryParameters['redirect'],
+            ) ??
+            AppRoute.home;
       }
-      return isAuthRoute || isGuestChat ? null : AppRoute.welcome;
+      if (isGate) return AppRoute.home;
+      if (isAuthRoute) return null;
+      if (AuthRoutePolicy.requiresAuthentication(location)) {
+        return AuthRoutePolicy.loginLocation(state.uri.toString());
+      }
+      return null;
     },
     routes: [
       GoRoute(path: AppRoute.authGate, builder: (_, _) => const AuthGatePage()),

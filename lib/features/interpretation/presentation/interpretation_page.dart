@@ -7,6 +7,7 @@ import '../../../core/assets/mystic_assets.dart';
 import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../ai_chat/presentation/widgets/chart_picker_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import '../../auth/presentation/require_authentication.dart';
 import '../domain/generated_overview_section_mapper.dart';
 import '../domain/interpretation_models.dart';
 import '../domain/interpretation_section_content_resolver.dart';
@@ -179,6 +180,13 @@ class InterpretationPage extends ConsumerWidget {
     int estimatedCost,
     int balance,
   ) async {
+    if (!requireAuthentication(
+      context,
+      ref,
+      reason: 'Đăng nhập để mở khóa nội dung luận giải bằng Xu.',
+    )) {
+      return;
+    }
     if (sections.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Bạn đã mở toàn bộ nội dung hiện có.')),
@@ -242,6 +250,13 @@ class InterpretationPage extends ConsumerWidget {
   }
 
   Future<void> _save(BuildContext context, WidgetRef ref) async {
+    if (!requireAuthentication(
+      context,
+      ref,
+      reason: 'Đăng nhập để lưu và đồng bộ lá số của bạn.',
+    )) {
+      return;
+    }
     final success = await ref
         .read(interpretationControllerProvider.notifier)
         .saveCurrentChart();
@@ -263,6 +278,13 @@ class InterpretationPage extends ConsumerWidget {
     WidgetRef ref,
     String? currentChartId,
   ) async {
+    if (!requireAuthentication(
+      context,
+      ref,
+      reason: 'Đăng nhập để sử dụng các lá số đã lưu.',
+    )) {
+      return;
+    }
     final selected = await showChartPickerDialog(
       context,
       selectedChartId: currentChartId,
@@ -278,6 +300,13 @@ class InterpretationPage extends ConsumerWidget {
     WidgetRef ref,
     ReadingSection section,
   ) async {
+    if (!requireAuthentication(
+      context,
+      ref,
+      reason: 'Đăng nhập để mở khóa nội dung luận giải bằng Xu.',
+    )) {
+      return;
+    }
     final state = ref.read(interpretationControllerProvider);
     if (state.context?.isSaved != true) {
       final shouldSave = await showDialog<bool>(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
+import '../../../../app/router/auth_route_policy.dart';
 import '../../../../core/theme/mystic_colors.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/auth_layout.dart';
@@ -31,7 +32,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final auth = ref.watch(authControllerProvider);
     final isLoading = auth.isLoading;
     return AuthLayout(
-      onClose: () => context.go(AppRoute.welcome),
+      onClose: () => context.go(_returnLocation(context)),
       title: 'Đăng nhập ',
       accentTitle: 'tài khoản',
       subtitle: 'Đăng nhập để đồng bộ lá số và nhận lời luận giải từ AI',
@@ -46,7 +47,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 onLogin: null,
                 onRegister: isLoading
                     ? null
-                    : () => context.go(AppRoute.register),
+                    : () =>
+                          context.go(_authLocation(context, AppRoute.register)),
               ),
               const SizedBox(height: 13),
               GoogleAuthButton(onPressed: isLoading ? null : _signInWithGoogle),
@@ -92,10 +94,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 trailingLabel: TextButton(
                   onPressed: isLoading
                       ? null
-                      : () => context.push(
-                          '${AppRoute.forgotPassword}?email='
-                          '${Uri.encodeQueryComponent(_emailController.text.trim())}',
-                        ),
+                      : () {
+                          final redirect = AuthRoutePolicy.safeRedirect(
+                            GoRouterState.of(
+                              context,
+                            ).uri.queryParameters['redirect'],
+                          );
+                          final query = <String, String>{
+                            'email': _emailController.text.trim(),
+                          };
+                          if (redirect != null) query['redirect'] = redirect;
+                          context.push(
+                            Uri(
+                              path: AppRoute.forgotPassword,
+                              queryParameters: query,
+                            ).toString(),
+                          );
+                        },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
@@ -142,6 +157,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   String? _required(String? value) => value == null || value.trim().isEmpty
       ? 'Vui lòng nhập thông tin này'
       : null;
+
+  String _returnLocation(BuildContext context) =>
+      AuthRoutePolicy.safeRedirect(
+        GoRouterState.of(context).uri.queryParameters['redirect'],
+      ) ??
+      AppRoute.home;
+
+  String _authLocation(BuildContext context, String path) {
+    final redirect = AuthRoutePolicy.safeRedirect(
+      GoRouterState.of(context).uri.queryParameters['redirect'],
+    );
+    return redirect == null
+        ? path
+        : '$path?redirect=${Uri.encodeQueryComponent(redirect)}';
+  }
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();

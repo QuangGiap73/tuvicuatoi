@@ -108,61 +108,93 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(15, 8, 15, 5),
-    child: Row(
-      children: [
-        _RoundIcon(
-          icon: Icons.chevron_left_rounded,
-          onTap: Navigator.of(context).canPop()
-              ? () => Navigator.of(context).pop()
-              : null,
-        ),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Column(
-            children: [
-              Text(
-                'Ví Xu & Phúc Lộc',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFFFFE291),
-                  fontFamily: 'serif',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 5)],
+    child: SizedBox(
+      height: 60,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: 0,
+            child: _RoundIcon(
+              icon: Icons.chevron_left_rounded,
+              onTap: Navigator.of(context).canPop()
+                  ? () => Navigator.of(context).pop()
+                  : null,
+            ),
+          ),
+          const Positioned.fill(
+            left: 52,
+            right: 68,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Ví Xu & Phúc Lộc',
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFFFE291),
+                      fontFamily: 'serif',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Tích lũy Xu để mở khóa luận giải và tiện ích tâm linh',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 9.5,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 0,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 68),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xD4283035),
+                  border: Border.all(color: _gold),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.monetization_on, color: _gold, size: 15),
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          balance == null ? '—' : _number(balance!),
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: Color(0xFFFFE3A0),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                'Tích lũy Xu để mở khóa luận giải và nhiều tiện ích tâm linh khác',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 10.5),
-              ),
-            ],
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-          decoration: BoxDecoration(
-            color: const Color(0xD4283035),
-            border: Border.all(color: _gold),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.monetization_on, color: _gold, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                balance == null ? '—' : _number(balance!),
-                style: const TextStyle(
-                  color: Color(0xFFFFE3A0),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }

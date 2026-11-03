@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
+import '../../../../app/router/auth_route_policy.dart';
 import '../../../../core/theme/mystic_colors.dart';
 import '../controllers/forgot_password_controller.dart';
 import '../state/forgot_password_state.dart';
@@ -45,8 +46,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(forgotPasswordControllerProvider);
     return AuthLayout(
-      onClose: () =>
-          context.canPop() ? context.pop() : context.go(AppRoute.login),
+      onClose: () => context.canPop()
+          ? context.pop()
+          : context.go(_loginLocation(context)),
       title: 'Khôi phục ',
       accentTitle: 'mật khẩu',
       subtitle: _subtitle(state),
@@ -206,7 +208,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(AppRoute.login);
+      context.go(_loginLocation(context));
     }
     messenger.showSnackBar(
       const SnackBar(
@@ -215,6 +217,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         ),
       ),
     );
+  }
+
+  String _loginLocation(BuildContext context) {
+    final redirect = AuthRoutePolicy.safeRedirect(
+      GoRouterState.of(context).uri.queryParameters['redirect'],
+    );
+    return redirect == null
+        ? AppRoute.login
+        : '${AppRoute.login}?redirect=${Uri.encodeQueryComponent(redirect)}';
   }
 }
 
