@@ -131,6 +131,8 @@ class InterpretationPage extends ConsumerWidget {
                                 _TabContent(
                                   state: state,
                                   isUnlocked: controller.isUnlocked,
+                                  hasReadableContent:
+                                      controller.hasReadableContent,
                                   onUnlock: (section) =>
                                       _confirmUnlock(context, ref, section),
                                   onUnlockGroup: (sections) =>
@@ -347,14 +349,16 @@ class InterpretationPage extends ConsumerWidget {
         );
         final synchronized = permissions?.contains(key) == true;
         if (synchronized) {
-          await unlockController.loadInterpretation(force: true);
+          await unlockController.syncUnlockedContent(section);
         }
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              synchronized
-                  ? 'Quyền đọc đã được đồng bộ.'
+              synchronized && unlockController.hasReadableContent(section)
+                  ? 'Nội dung đầy đủ đã được đồng bộ.'
+                  : synchronized
+                  ? 'Quyền đọc đã có, nội dung vẫn đang được đồng bộ.'
                   : 'Backend chưa trả quyền đọc. Bạn có thể thử tải lại sau.',
             ),
           ),
@@ -417,7 +421,8 @@ class InterpretationPage extends ConsumerWidget {
     if (!context.mounted) return;
     final after = ref.read(interpretationControllerProvider);
     final error = after.unlockError;
-    final status = controller.statusFor(section);
+    final contentReady = controller.hasReadableContent(section);
+    final status = contentReady ? UnlockStatus.unlocked : UnlockStatus.syncing;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -465,7 +470,11 @@ class InterpretationPage extends ConsumerWidget {
     final section = liveSection ?? requestedSection;
     final interpretation = latestState.interpretation;
 
-    if (!controller.isUnlocked(section) || interpretation == null) return;
+    if (!controller.isUnlocked(section) ||
+        !controller.hasReadableContent(section) ||
+        interpretation == null) {
+      return;
+    }
 
     final content = const InterpretationSectionContentResolver().resolve(
       section: section,
@@ -514,6 +523,7 @@ class _TabContent extends StatelessWidget {
   const _TabContent({
     required this.state,
     required this.isUnlocked,
+    required this.hasReadableContent,
     required this.onUnlock,
     required this.onUnlockGroup,
     required this.onSelectPalace,
@@ -521,6 +531,7 @@ class _TabContent extends StatelessWidget {
 
   final InterpretationState state;
   final bool Function(ReadingSection) isUnlocked;
+  final bool Function(ReadingSection) hasReadableContent;
   final ValueChanged<ReadingSection> onUnlock;
   final ValueChanged<List<ReadingSection>> onUnlockGroup;
   final ValueChanged<String?> onSelectPalace;
@@ -646,7 +657,8 @@ class _TabContent extends StatelessWidget {
         chartData: state.context?.chartData ?? const {},
       );
 
-  bool _canRead(ReadingSection section) => isUnlocked(section);
+  bool _canRead(ReadingSection section) =>
+      isUnlocked(section) && hasReadableContent(section);
 
   List<Widget> _generatedOverviewCards(BuildContext context) {
     final interpretation = state.interpretation;

@@ -15,11 +15,14 @@ import '../../application/reading_catalog_service.dart';
 import '../../application/reading_unlock_service.dart';
 import '../../data/interpretation_repository.dart';
 import '../../domain/interpretation_models.dart';
+import '../../domain/interpretation_section_content_resolver.dart';
+import '../../domain/section_content.dart';
 import '../state/interpretation_state.dart';
 
 class InterpretationController extends Notifier<InterpretationState> {
   static const _chartSessions = ChartSessionService();
   static const _catalogs = ReadingCatalogService();
+  static const _contentResolver = InterpretationSectionContentResolver();
   CancelToken? _chartToken;
   CancelToken? _sectionsToken;
   CancelToken? _unlocksToken;
@@ -329,7 +332,7 @@ class InterpretationController extends Notifier<InterpretationState> {
           context: context,
           cancelToken: token,
         );
-        content = saved.mergeDetailed(generated);
+        content = generated.mergeDetailed(saved);
         if (content.isEmpty && generatedError != null) {
           Error.throwWithStackTrace(generatedError, StackTrace.current);
         } else if (generatedError != null) {
@@ -351,7 +354,7 @@ class InterpretationController extends Notifier<InterpretationState> {
           context: context,
           cancelToken: token,
         );
-        content = saved.mergeDetailed(generated);
+        content = generated.mergeDetailed(saved);
         if (content.isEmpty && generatedError != null) {
           Error.throwWithStackTrace(generatedError, StackTrace.current);
         } else if (generatedError != null) {
@@ -439,12 +442,60 @@ class InterpretationController extends Notifier<InterpretationState> {
     );
   }
 
+  bool hasReadableContent(ReadingSection section) {
+    final interpretation = state.interpretation;
+    final chartData = state.context?.chartData;
+    if (interpretation == null || chartData == null) return false;
+    final content = _contentResolver.resolve(
+      section: section,
+      interpretation: interpretation,
+      chartData: chartData,
+    );
+    return content.fullContent?.trim().isNotEmpty == true &&
+        !content.isFallback &&
+        content.source != ContentSource.catalogSummary &&
+        content.source != ContentSource.unavailable;
+  }
+
   UnlockStatus statusFor(ReadingSection section) {
-    if (isUnlocked(section)) return UnlockStatus.unlocked;
     final key = _sectionKey(section);
-    return key == null
-        ? UnlockStatus.idle
-        : state.unlockStatusBySection[key.value] ?? UnlockStatus.idle;
+    final tracked = key == null ? null : state.unlockStatusBySection[key.value];
+    if (tracked == UnlockStatus.confirming ||
+        tracked == UnlockStatus.submitting ||
+        tracked == UnlockStatus.syncing) {
+      return tracked!;
+    }
+    if (isUnlocked(section)) {
+      return hasReadableContent(section)
+          ? UnlockStatus.unlocked
+          : UnlockStatus.syncing;
+    }
+    return key == null ? UnlockStatus.idle : tracked ?? UnlockStatus.idle;
+  }
+
+  Future<bool> syncUnlockedContent(ReadingSection section) async {
+    final key = _sectionKey(section);
+    if (key == null || !isUnlocked(section)) return false;
+    if (hasReadableContent(section)) {
+      _setUnlockStatuses([key], UnlockStatus.unlocked, clearError: true);
+      return true;
+    }
+    if (_unlockToken == null || _unlockToken!.isCancelled) {
+      _unlockToken = CancelToken();
+    }
+    final session = _session;
+    _setUnlockStatuses([key], UnlockStatus.syncing, clearError: true);
+    final ready = await _waitForUnlockedContent([section], session: session);
+    if (session != _session) return false;
+    _setUnlockStatuses(
+      [key],
+      ready ? UnlockStatus.unlocked : UnlockStatus.syncing,
+      clearError: ready,
+      error: ready
+          ? null
+          : 'Quyền đọc đã được ghi nhận nhưng nội dung vẫn đang đồng bộ.',
+    );
+    return ready;
   }
 
   bool canPurchase(ReadingSection section) {
@@ -620,13 +671,22 @@ class InterpretationController extends Notifier<InterpretationState> {
       if (!_isCurrent(session, token)) return result;
       if (permissionPoll?.permissions.contains(key) == true) {
         _invalidateSharedModeContent(mode);
-        await loadInterpretation(force: true);
+        final contentReady = await _waitForUnlockedContent([
+          section,
+        ], session: session);
         if (!_isCurrent(session, token)) return result;
         _publishPermissionPoll(context.chartId!, permissionPoll!);
-        _setUnlockStatuses([key], UnlockStatus.unlocked, clearError: true);
         await loadSections(
           session: session,
           preserveConfirmedPermissions: true,
+        );
+        _setUnlockStatuses(
+          [key],
+          contentReady ? UnlockStatus.unlocked : UnlockStatus.syncing,
+          clearError: contentReady,
+          error: contentReady
+              ? null
+              : 'Đã mở khóa, đang đồng bộ nội dung đầy đủ. Vui lòng thử lại sau giây lát.',
         );
       } else {
         if (permissionPoll != null) {
@@ -763,22 +823,38 @@ class InterpretationController extends Notifier<InterpretationState> {
       final resolved = keys
           .where((key) => permissionPoll?.permissions.contains(key) == true)
           .toList(growable: false);
+      var resolvedContentReady = false;
       if (resolved.isNotEmpty) {
         _invalidateSharedModeContent(mode);
-        await loadInterpretation(force: true);
+        final resolvedSections = pending
+            .where((section) {
+              final sectionKey = _sectionKey(section);
+              return sectionKey != null && resolved.contains(sectionKey);
+            })
+            .toList(growable: false);
+        resolvedContentReady = await _waitForUnlockedContent(
+          resolvedSections,
+          session: session,
+        );
         if (!_isCurrent(session, token)) return result;
       }
       if (permissionPoll != null) {
         _publishPermissionPoll(context.chartId!, permissionPoll);
       }
-      _setUnlockStatuses(resolved, UnlockStatus.unlocked);
       if (resolved.isNotEmpty) {
         await loadSections(
           session: session,
           preserveConfirmedPermissions: true,
         );
+        _setUnlockStatuses(
+          resolved,
+          resolvedContentReady ? UnlockStatus.unlocked : UnlockStatus.syncing,
+          error: !resolvedContentReady
+              ? 'Đã mở khóa, đang đồng bộ nội dung đầy đủ. Vui lòng thử lại sau giây lát.'
+              : null,
+        );
       }
-      if (unresolved.isEmpty) {
+      if (unresolved.isEmpty && resolvedContentReady) {
         state = state.copyWith(clearUnlockError: true);
       } else {
         _setUnlockStatuses(
@@ -812,6 +888,29 @@ class InterpretationController extends Notifier<InterpretationState> {
       );
       return null;
     }
+  }
+
+  Future<bool> _waitForUnlockedContent(
+    List<ReadingSection> sections, {
+    required int session,
+  }) async {
+    if (sections.isEmpty) return true;
+    const delays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 400),
+      Duration(milliseconds: 900),
+      Duration(milliseconds: 1600),
+    ];
+    for (final delay in delays) {
+      if (delay > Duration.zero) await Future<void>.delayed(delay);
+      if (session != _session || _unlockToken?.isCancelled != false) {
+        return false;
+      }
+      await loadInterpretation(session: session, force: true);
+      if (session != _session) return false;
+      if (sections.every(hasReadableContent)) return true;
+    }
+    return false;
   }
 
   Future<ReadingUnlockPollResult?> _waitForUnlockPermissions(

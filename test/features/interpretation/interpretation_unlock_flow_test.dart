@@ -87,7 +87,8 @@ void main() {
       await controller.loadSections();
 
       expect(controller.isUnlocked(first), isTrue);
-      expect(controller.statusFor(first), UnlockStatus.unlocked);
+      expect(controller.hasReadableContent(first), isFalse);
+      expect(controller.statusFor(first), UnlockStatus.syncing);
     },
   );
 
@@ -110,7 +111,8 @@ void main() {
     expect(result?.saveCost, 20);
     expect(result?.balance, 820);
     expect(controller.isUnlocked(first), isTrue);
-    expect(controller.statusFor(first), UnlockStatus.unlocked);
+    expect(controller.hasReadableContent(first), isFalse);
+    expect(controller.statusFor(first), UnlockStatus.syncing);
     expect(controller.isUnlocked(second), isFalse);
     expect(controller.statusFor(second), UnlockStatus.syncing);
   });
