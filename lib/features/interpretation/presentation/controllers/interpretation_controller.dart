@@ -46,9 +46,27 @@ class InterpretationController extends Notifier<InterpretationState> {
     required ChartResult result,
     String? savedChartId,
   }) {
+    final chartId = _notEmpty(savedChartId);
+    if (chartId != null) {
+      openSaved(
+        SavedChart(
+          id: chartId,
+          name: result.fullName,
+          gender: result.gender,
+          solarDate: result.solarDate,
+          lunarDate: result.lunarDate,
+          createdAt: '',
+          hourBranch: result.hourBranch,
+          menh: result.menh,
+          cuc: result.cuc,
+          chartData: result.rawData,
+        ),
+      );
+      return;
+    }
     final context = InterpretationChartContext(
       name: result.fullName,
-      chartId: _notEmpty(savedChartId),
+      chartId: null,
       chartData: result.rawData,
       request: request,
       generatedResult: result,
