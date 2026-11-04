@@ -1,4 +1,4 @@
-package com.example.tuvicuatoi
+package com.tuvicuatoi.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -22,6 +22,7 @@ import '../../features/profile/presentation/edit_profile_page.dart';
 import '../../features/profile/presentation/account_settings_page.dart';
 import '../../features/wallet/presentation/wallet_page.dart';
 import '../../features/wallet/presentation/coin_packages_page.dart';
+import '../../features/wallet/presentation/state/top_up_state.dart';
 import '../../features/wallet/presentation/coin_transactions_page.dart';
 import '../../features/wallet/presentation/payment_orders_page.dart';
 import 'app_shell.dart';
@@ -142,6 +143,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoute.chat,
                 builder: (_, state) => AiChatPage(
                   initialPrompt: state.uri.queryParameters['prompt'],
+                  openHistory: state.uri.queryParameters['history'] == 'true',
                 ),
               ),
             ],
@@ -154,7 +156,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'packages',
-                    builder: (_, _) => const CoinPackagesPage(),
+                    builder: (_, state) => CoinPackagesPage(
+                      initialTab:
+                          state.uri.queryParameters['tab'] == 'membership'
+                          ? TopUpTab.membership
+                          : TopUpTab.coins,
+                    ),
                   ),
                   GoRoute(
                     path: 'transactions',

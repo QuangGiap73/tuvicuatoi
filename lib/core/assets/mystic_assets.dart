@@ -14,7 +14,7 @@ abstract final class MysticAssets {
   static const frame = '$root/frame';
 
   static const welcomeBackground = '$backgrounds/background_A.png';
-  static const homeBackground = '$backgrounds/background_home_A.png';
+  static const homeBackground = '$backgrounds/background_home_D.png';
   static const myChartsBackground = '$backgrounds/background_la_so_A.png';
   static const dailyFortuneBackground = '$backgrounds/background_van_han_A.png';
   static const chartPickerBackground =

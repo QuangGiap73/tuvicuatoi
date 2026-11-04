@@ -407,6 +407,7 @@ class _CoinUses extends StatelessWidget {
               icon: Icons.menu_book_rounded,
               title: 'Mở luận giải',
               description: 'Mở khóa chi tiết từng cung và đại vận.',
+              priceTag: '100 xu / cung',
             ),
             const SizedBox(width: gap),
             _UseCard(
@@ -414,6 +415,7 @@ class _CoinUses extends StatelessWidget {
               icon: Icons.chat_bubble_rounded,
               title: 'Hỏi đáp AI',
               description: 'Đàm đạo chuyên sâu cùng Trợ lý Tử Vi.',
+              priceTag: '100 xu / câu',
             ),
             const SizedBox(width: gap),
             _UseCard(
@@ -421,6 +423,7 @@ class _CoinUses extends StatelessWidget {
               icon: Icons.inventory_2_rounded,
               title: 'Lưu lá số',
               description: 'Lưu trữ lá số của bạn và người thân.',
+              priceTag: '100 xu / lá',
             ),
           ],
         ),
@@ -435,11 +438,13 @@ class _UseCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
+    required this.priceTag,
   });
   final double width;
   final IconData icon;
   final String title;
   final String description;
+  final String priceTag;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -510,19 +515,22 @@ class _UseCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
-                    vertical: 3,
+                    vertical: 3.5,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8C36B),
-                    borderRadius: BorderRadius.circular(10),
+                    color: const Color(0xFF26180B),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'Theo giá hệ thống',
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: Color(0xFF704309),
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      priceTag,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Color(0xFFFFDF9B),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),

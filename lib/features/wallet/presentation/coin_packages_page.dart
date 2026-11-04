@@ -17,11 +17,27 @@ import 'widgets/top_up_tabs.dart';
 const _gold = Color(0xFFE5BA50);
 const _ink = Color(0xFF442911);
 
-class CoinPackagesPage extends ConsumerWidget {
-  const CoinPackagesPage({super.key});
+class CoinPackagesPage extends ConsumerStatefulWidget {
+  const CoinPackagesPage({this.initialTab = TopUpTab.coins, super.key});
+
+  final TopUpTab initialTab;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CoinPackagesPage> createState() => _CoinPackagesPageState();
+}
+
+class _CoinPackagesPageState extends ConsumerState<CoinPackagesPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(topUpControllerProvider.notifier).selectTab(widget.initialTab);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedTab = ref.watch(topUpTabProvider);
     final isLoading = ref.watch(topUpLoadingProvider);
     final error = ref.watch(topUpErrorProvider);

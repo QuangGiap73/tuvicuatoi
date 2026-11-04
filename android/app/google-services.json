@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "179234634841",
+    "project_id": "tuvicuatoi-5b666",
+    "storage_bucket": "tuvicuatoi-5b666.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:179234634841:android:b84d0a5fe3992c8a978548",
+        "android_client_info": {
+          "package_name": "com.example.tuvicuatoi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "179234634841-mvhgh1nkffhpf9spku0lks4a2q62oemo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tuvicuatoi",
+            "certificate_hash": "79953f54b01d067061a6da462efdbc9b655fec62"
+          }
+        },
+        {
+          "client_id": "179234634841-fiuap15pqqvrq3nji0qckh3h8fuhvoi3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMl_qglv6_zCS21G3vmEbve90pi5BWIMc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "179234634841-fiuap15pqqvrq3nji0qckh3h8fuhvoi3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "179234634841-nbhteksom9j1irvu2eb5f5bv7u1op76u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tuvicuatoi"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:179234634841:android:981dd48b76496ca8978548",
+        "android_client_info": {
+          "package_name": "com.tuvicuatoi.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "179234634841-j365vmm13etvm0r2dopq4u182nosrb3v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tuvicuatoi.app",
+            "certificate_hash": "79953f54b01d067061a6da462efdbc9b655fec62"
+          }
+        },
+        {
+          "client_id": "179234634841-fiuap15pqqvrq3nji0qckh3h8fuhvoi3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMl_qglv6_zCS21G3vmEbve90pi5BWIMc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "179234634841-fiuap15pqqvrq3nji0qckh3h8fuhvoi3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "179234634841-nbhteksom9j1irvu2eb5f5bv7u1op76u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tuvicuatoi"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

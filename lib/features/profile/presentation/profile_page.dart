@@ -68,15 +68,15 @@ class ProfilePage extends ConsumerWidget {
           MysticProfileActionMenu(
             isPremium: user?.isPremium ?? false,
             onUpgradePressed: () =>
-                _showComingSoon(context, 'Nâng cấp Premium'),
+                context.push('${AppRoute.coinPackages}?tab=membership'),
             onPersonalProfilePressed: () =>
                 context.push(AppRoute.personalProfile),
             onChartHistoryPressed: () => context.push(AppRoute.myCharts),
             onAiHistoryPressed: () =>
-                _showComingSoon(context, 'Lịch sử trò chuyện AI'),
-            onTopUpPressed: () => context.go(AppRoute.wallet),
+                context.push('${AppRoute.chat}?history=true'),
+            onTopUpPressed: () => context.push(AppRoute.coinPackages),
             onMembershipPressed: () =>
-                _showComingSoon(context, 'Gói thành viên'),
+                context.push('${AppRoute.coinPackages}?tab=membership'),
             onSettingsPressed: () => context.push(AppRoute.accountSettings),
             onHelpPressed: () => _showComingSoon(context, 'Trợ giúp & Hỗ trợ'),
           ),

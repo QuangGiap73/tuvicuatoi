@@ -104,3 +104,13 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, AuthSession?>(AuthController.new);
+
+/// Identity key for state that must never be shared between user sessions.
+///
+/// It intentionally becomes `null` while signing out or switching accounts so
+/// dependent providers clear the previous user's cached data immediately.
+final authSessionUserIdProvider = Provider<String?>((ref) {
+  return ref.watch(
+    authControllerProvider.select((state) => state.asData?.value?.user.id),
+  );
+});

@@ -239,22 +239,29 @@ class _Header extends StatelessWidget {
           ),
           const Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Tin Tức & Cẩm Nang',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFFFFE4A0),
-                    fontFamily: 'serif',
-                    fontSize: 23,
-                    fontWeight: FontWeight.w900,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Tin Tức & Cẩm Nang',
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFFFE4A0),
+                      fontFamily: 'serif',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'Khám phá kiến thức Tử Vi và Phong Thủy',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white60, fontSize: 10),
+                  style: TextStyle(color: Colors.white60, fontSize: 10.5),
                 ),
               ],
             ),

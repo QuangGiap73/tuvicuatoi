@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -44,13 +45,19 @@ class PersonalProfilePage extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           _DetailsCard(
-            rows: [
-              ('Số điện thoại', _value(user?.phone)),
-              ('Ngày sinh', _value(user?.birthDate)),
-              ('Giờ sinh', _value(user?.birthTime)),
-              ('Giới tính', _genderLabel(user?.gender)),
-              ('Gói thành viên', _value(user?.packageName)),
-              ('Mã giới thiệu', _value(user?.referralCode)),
+            items: [
+              _DetailItem(label: 'Số điện thoại', value: _value(user?.phone)),
+              _DetailItem(label: 'Ngày sinh', value: _value(user?.birthDate)),
+              _DetailItem(label: 'Giờ sinh', value: _value(user?.birthTime)),
+              _DetailItem(label: 'Giới tính', value: _genderLabel(user?.gender)),
+              _DetailItem(label: 'Gói thành viên', value: _value(user?.packageName)),
+              _DetailItem(
+                label: 'Mã giới thiệu',
+                value: _value(user?.referralCode),
+                copyText: _hasCode(user?.referralCode)
+                    ? user!.referralCode!.trim()
+                    : null,
+              ),
             ],
           ),
           const SizedBox(height: 22),
@@ -67,6 +74,11 @@ class PersonalProfilePage extends ConsumerWidget {
 
   static String _value(String? value) =>
       value == null || value.trim().isEmpty ? 'Chưa cập nhật' : value.trim();
+
+  static bool _hasCode(String? value) =>
+      value != null &&
+      value.trim().isNotEmpty &&
+      value.trim() != 'Chưa cập nhật';
 
   static String _genderLabel(String? value) => switch (value?.toUpperCase()) {
     'MALE' || 'NAM' => 'Nam',
@@ -290,9 +302,21 @@ class _OrnamentalDivider extends StatelessWidget {
   );
 }
 
+class _DetailItem {
+  const _DetailItem({
+    required this.label,
+    required this.value,
+    this.copyText,
+  });
+
+  final String label;
+  final String value;
+  final String? copyText;
+}
+
 class _DetailsCard extends StatelessWidget {
-  const _DetailsCard({required this.rows});
-  final List<(String, String)> rows;
+  const _DetailsCard({required this.items});
+  final List<_DetailItem> items;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -374,7 +398,7 @@ class _DetailsCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  for (var index = 0; index < rows.length; index++) ...[
+                  for (var index = 0; index < items.length; index++) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 9,
@@ -384,7 +408,7 @@ class _DetailsCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              rows[index].$1,
+                              items[index].label,
                               style: const TextStyle(
                                 color: Color(0xFFAEB7C2),
                                 fontSize: 13,
@@ -393,20 +417,31 @@ class _DetailsCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(
-                              rows[index].$2,
-                              textAlign: TextAlign.start,
-                              style: const TextStyle(
-                                color: MysticColors.ivory,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    items[index].value,
+                                    textAlign: TextAlign.start,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: MysticColors.ivory,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (items[index].copyText != null) ...[
+                                  const SizedBox(width: 6),
+                                  _CopyButton(text: items[index].copyText!),
+                                ],
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (index != rows.length - 1)
+                    if (index != items.length - 1)
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8),
                         child: Divider(height: 1, color: Color(0xFF334354)),
@@ -420,4 +455,54 @@ class _DetailsCard extends StatelessWidget {
       );
     },
   );
+}
+
+class _CopyButton extends StatelessWidget {
+  const _CopyButton({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Sao chép',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            await Clipboard.setData(ClipboardData(text: text));
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF6EDC8C),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Đã sao chép mã giới thiệu: $text'),
+                    ),
+                  ],
+                ),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(
+              Icons.copy_rounded,
+              size: 16,
+              color: Color(0xFFFFDF9B),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

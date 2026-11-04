@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/presentation/controllers/auth_controller.dart';
 import '../data/wallet_repository.dart';
 import '../domain/wallet_models.dart';
 
@@ -73,8 +74,18 @@ class TransactionHistoryController extends Notifier<TransactionHistoryState> {
 
   @override
   TransactionHistoryState build() {
+    final userId = ref.watch(authSessionUserIdProvider);
+    _token?.cancel('Phiên đăng nhập đã thay đổi');
+    _session++;
+    _filterCache.clear();
+    _loadedAt.clear();
     ref.onDispose(() => _token?.cancel());
-    Future.microtask(refresh);
+    if (userId == null || userId.isEmpty) {
+      return const TransactionHistoryState();
+    }
+    Future.microtask(() {
+      if (ref.read(authSessionUserIdProvider) == userId) refresh();
+    });
     return const TransactionHistoryState(isLoading: true);
   }
 

@@ -11,6 +11,8 @@ class PaymentOrderController extends Notifier<PaymentOrderState> {
 
   @override
   PaymentOrderState build() {
+    ref.watch(authSessionUserIdProvider);
+    _token?.cancel('Phiên đăng nhập đã thay đổi');
     ref.onDispose(() => _token?.cancel());
     return const PaymentOrderState();
   }
@@ -68,6 +70,8 @@ class PaymentOrdersController extends Notifier<PaymentOrdersState> {
 
   @override
   PaymentOrdersState build() {
+    ref.watch(authSessionUserIdProvider);
+    _token?.cancel('Phiên đăng nhập đã thay đổi');
     ref.onDispose(() => _token?.cancel());
     return const PaymentOrdersState();
   }

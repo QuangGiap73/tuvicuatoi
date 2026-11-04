@@ -40,11 +40,19 @@ class WalletController extends Notifier<WalletState> {
 
   @override
   WalletState build() {
+    final userId = ref.watch(authSessionUserIdProvider);
+    _token?.cancel('Phiên đăng nhập đã thay đổi');
+    _syncTimer?.cancel();
     ref.onDispose(() {
       _token?.cancel();
       _syncTimer?.cancel();
     });
-    Future.microtask(refresh);
+    if (userId == null || userId.isEmpty) {
+      return const WalletState();
+    }
+    Future.microtask(() {
+      if (ref.read(authSessionUserIdProvider) == userId) refresh();
+    });
     return const WalletState(isLoading: true);
   }
 

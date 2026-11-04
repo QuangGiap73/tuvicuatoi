@@ -6,6 +6,8 @@ abstract final class AppConfig {
 
   static const googleServerClientId = String.fromEnvironment(
     'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue:
+        '179234634841-fiuap15pqqvrq3nji0qckh3h8fuhvoi3.apps.googleusercontent.com',
   );
 
   static const googleIosClientId = String.fromEnvironment(

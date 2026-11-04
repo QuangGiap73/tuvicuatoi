@@ -909,29 +909,22 @@ class _Header extends StatelessWidget {
                 color: const Color(0xFFFFD978),
               ),
               const Expanded(
-                child: Text(
-                  'Luận giải lá số',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFFFFE0A0),
-                    fontFamily: 'serif',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Luận giải lá số',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFFFE0A0),
+                      fontFamily: 'serif',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
-              SizedBox(
-                width: 48,
-                child: Text(
-                  '$balance Xu',
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: Color(0xFFEAC875),
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              const SizedBox(width: 6),
+              _CoinBadge(balance: balance),
             ],
           ),
           const Divider(color: Color(0x448E7339), height: 1),
@@ -996,6 +989,80 @@ class _Header extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+class _CoinBadge extends StatelessWidget {
+  const _CoinBadge({required this.balance});
+
+  final int balance;
+
+  static String _formatBalance(int value) {
+    final negative = value < 0;
+    final digits = value.abs().toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(digits[i]);
+    }
+    return '${negative ? '-' : ''}$buffer';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFE5BA50);
+    return Tooltip(
+      message: 'Ví Xu',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(AppRoute.wallet),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xD4283035),
+              border: Border.all(color: gold, width: 1.1),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+                BoxShadow(
+                  color: Color(0x22E5BA50),
+                  blurRadius: 6,
+                  spreadRadius: 0.5,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.monetization_on,
+                  color: gold,
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${_formatBalance(balance)} Xu',
+                  style: const TextStyle(
+                    color: Color(0xFFFFE3A0),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
