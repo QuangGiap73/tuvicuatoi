@@ -77,7 +77,11 @@ class PalaceDetailPage extends ConsumerWidget {
           SafeArea(
             child: Column(
               children: [
-                _PalaceDetailAppBar(onBack: context.pop),
+                _PalaceDetailAppBar(
+                  onBack: () => context.canPop()
+                      ? context.pop()
+                      : context.go(AppRoute.horoscope),
+                ),
                 Expanded(
                   child: CustomScrollView(
                     key: ValueKey(

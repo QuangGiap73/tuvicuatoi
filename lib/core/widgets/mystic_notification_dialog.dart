@@ -81,6 +81,9 @@ class MysticNotificationDialog extends StatelessWidget {
               child: Image.asset(
                 MysticAssets.notificationFrame,
                 fit: BoxFit.fill,
+                cacheWidth: (width * MediaQuery.devicePixelRatioOf(context))
+                    .round()
+                    .clamp(1, 1091),
                 filterQuality: FilterQuality.medium,
               ),
             ),

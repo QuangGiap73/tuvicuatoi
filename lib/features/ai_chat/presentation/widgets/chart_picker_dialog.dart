@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,10 +17,8 @@ Future<SavedChart?> showChartPickerDialog(
   barrierLabel: 'Đóng danh sách lá số',
   barrierColor: const Color(0x99000000),
   transitionDuration: const Duration(milliseconds: 220),
-  pageBuilder: (context, _, _) => BackdropFilter(
-    filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-    child: Center(child: _ChartPickerDialog(selectedChartId: selectedChartId)),
-  ),
+  pageBuilder: (context, _, _) =>
+      Center(child: _ChartPickerDialog(selectedChartId: selectedChartId)),
   transitionBuilder: (context, animation, _, child) => FadeTransition(
     opacity: animation,
     child: ScaleTransition(
@@ -67,7 +63,7 @@ class _ChartPickerDialog extends ConsumerWidget {
               child: Image.asset(
                 MysticAssets.chartPickerBackground,
                 fit: BoxFit.fill,
-                cacheWidth: (dialogWidth * dpr).round(),
+                cacheWidth: (dialogWidth * dpr).round().clamp(1, 971),
                 filterQuality: FilterQuality.medium,
               ),
             ),
@@ -215,7 +211,6 @@ class _ChartPickerBody extends StatelessWidget {
       return const Center(child: Text('Bạn chưa lưu lá số nào.'));
     }
     return ListView.separated(
-      shrinkWrap: true,
       itemCount: state.charts.length,
       separatorBuilder: (_, _) => const SizedBox(height: 9),
       itemBuilder: (context, index) {

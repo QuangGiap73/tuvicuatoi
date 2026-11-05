@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,11 +14,13 @@ import '../../data/ai_chat_history_store.dart';
 import '../../data/ai_chat_repository.dart';
 import '../../domain/ai_chat_message.dart';
 import '../state/ai_chat_state.dart';
+import '../state/ai_chat_route_activity.dart';
 
 class AiChatController extends Notifier<AiChatState> {
   CancelToken? _chartCancelToken;
   CancelToken? _historyCancelToken;
   CancelToken? _sendCancelToken;
+  Timer? _streamFlushTimer;
   int _chartSession = 0;
 
   static const palaceNames = <String>[
@@ -36,10 +40,16 @@ class AiChatController extends Notifier<AiChatState> {
 
   @override
   AiChatState build() {
+    ref.watch(authSessionUserIdProvider);
+    _chartCancelToken?.cancel('Phiên đăng nhập đã thay đổi');
+    _historyCancelToken?.cancel('Phiên đăng nhập đã thay đổi');
+    _sendCancelToken?.cancel('Phiên đăng nhập đã thay đổi');
+    _streamFlushTimer?.cancel();
     ref.onDispose(() {
       _chartCancelToken?.cancel();
       _historyCancelToken?.cancel();
       _sendCancelToken?.cancel();
+      _streamFlushTimer?.cancel();
     });
     return const AiChatState();
   }
@@ -55,6 +65,7 @@ class AiChatController extends Notifier<AiChatState> {
     _chartCancelToken?.cancel('Dùng lá số vừa lập');
     _historyCancelToken?.cancel('Dùng lá số vừa lập');
     _sendCancelToken?.cancel('Dùng lá số vừa lập');
+    _streamFlushTimer?.cancel();
     final summary = SavedChart(
       id: result.id,
       name: result.fullName,
@@ -84,6 +95,7 @@ class AiChatController extends Notifier<AiChatState> {
     _chartCancelToken?.cancel('Chart changed');
     _historyCancelToken?.cancel('Chart changed');
     _sendCancelToken?.cancel('Chart changed');
+    _streamFlushTimer?.cancel();
     final chartToken = CancelToken();
     final historyToken = CancelToken();
     _chartCancelToken = chartToken;
@@ -210,8 +222,9 @@ class AiChatController extends Notifier<AiChatState> {
     _sendCancelToken?.cancel('A newer message was sent');
     final token = CancelToken();
     _sendCancelToken = token;
-    var accumulated = '';
-    var hasAssistantBubble = false;
+    final responseBuffer = StringBuffer();
+    var receivedAssistantContent = false;
+    var finalizedAssistant = false;
     try {
       final selectedPalace = palaceNames[state.selectedTopic];
       // Giữ tiền tố để tương thích backend hiện tại, đồng thời gửi focusPalace
@@ -232,33 +245,48 @@ class AiChatController extends Notifier<AiChatState> {
               )) {
         if (session != _chartSession || token.isCancelled) return false;
         if (event is AiChatDelta) {
-          accumulated += event.text;
-          hasAssistantBubble = true;
-          _upsertAssistant(
-            assistantId,
-            accumulated,
-            time,
-            AiChatMessageStatus.streaming,
-            userId,
+          responseBuffer.write(event.text);
+          receivedAssistantContent = true;
+          _scheduleStreamingFlush(
+            assistantId: assistantId,
+            responseBuffer: responseBuffer,
+            time: time,
+            userId: userId,
+            session: session,
+            token: token,
           );
         } else if (event is AiChatDone) {
-          if (event.fullText.trim().isNotEmpty) accumulated = event.fullText;
-          hasAssistantBubble = true;
-          _upsertAssistant(
-            assistantId,
-            accumulated,
-            time,
-            AiChatMessageStatus.sent,
-            userId,
+          final finalText = event.fullText.trim().isNotEmpty
+              ? event.fullText
+              : responseBuffer.toString();
+          receivedAssistantContent = finalText.trim().isNotEmpty;
+          _streamFlushTimer?.cancel();
+          _streamFlushTimer = null;
+          _finishAssistant(
+            assistantId: assistantId,
+            content: finalText,
+            time: time,
+            userId: userId,
           );
+          finalizedAssistant = true;
         } else if (event is AiChatStreamError) {
           throw AiChatException(event.message);
         }
       }
-      if (!hasAssistantBubble || accumulated.trim().isEmpty) {
+      if (!receivedAssistantContent ||
+          responseBuffer.isEmpty && !finalizedAssistant) {
         throw const AiChatException('AI chưa trả về nội dung.');
       }
-      state = state.copyWith(phase: AiChatPhase.ready);
+      if (!finalizedAssistant) {
+        _streamFlushTimer?.cancel();
+        _streamFlushTimer = null;
+        _finishAssistant(
+          assistantId: assistantId,
+          content: responseBuffer.toString(),
+          time: time,
+          userId: userId,
+        );
+      }
       final localUserId = user.id.isNotEmpty ? user.id : user.email;
       await ref
           .read(aiChatHistoryStoreProvider)
@@ -283,6 +311,8 @@ class AiChatController extends Notifier<AiChatState> {
       _markFailed(userId, error.message);
       return false;
     } finally {
+      _streamFlushTimer?.cancel();
+      _streamFlushTimer = null;
       if (identical(_sendCancelToken, token)) _sendCancelToken = null;
     }
   }
@@ -334,39 +364,84 @@ class AiChatController extends Notifier<AiChatState> {
     }
   }
 
-  void _upsertAssistant(
-    String assistantId,
-    String content,
-    String time,
-    AiChatMessageStatus status,
-    String userId,
-  ) {
-    final messages = [...state.messages];
-    final userIndex = messages.indexWhere((item) => item.id == userId);
-    if (userIndex >= 0) {
-      messages[userIndex] = messages[userIndex].copyWith(
-        status: AiChatMessageStatus.sent,
+  void _scheduleStreamingFlush({
+    required String assistantId,
+    required StringBuffer responseBuffer,
+    required String time,
+    required String userId,
+    required int session,
+    required CancelToken token,
+  }) {
+    if (_streamFlushTimer?.isActive == true) return;
+    final isVisible = ref.read(aiChatRouteActivityProvider);
+    _streamFlushTimer = Timer(Duration(milliseconds: isVisible ? 75 : 400), () {
+      _streamFlushTimer = null;
+      if (session != _chartSession || token.isCancelled) return;
+      _setStreamingAssistant(
+        assistantId: assistantId,
+        content: responseBuffer.toString(),
+        time: time,
+        userId: userId,
       );
-    }
-    final index = messages.indexWhere((item) => item.id == assistantId);
-    final assistant = AiChatMessage(
-      id: assistantId,
-      role: AiChatRole.assistant,
-      content: content,
-      time: time,
-      status: status,
-    );
-    if (index >= 0) {
-      messages[index] = assistant;
-    } else {
-      messages.add(assistant);
+    });
+  }
+
+  void _setStreamingAssistant({
+    required String assistantId,
+    required String content,
+    required String time,
+    required String userId,
+  }) {
+    var messages = state.messages;
+    if (state.streamingMessage == null) {
+      messages = _markUserSent(messages, userId);
     }
     state = state.copyWith(
-      phase: status == AiChatMessageStatus.streaming
-          ? AiChatPhase.streaming
-          : AiChatPhase.sending,
-      messages: List.unmodifiable(messages),
+      phase: AiChatPhase.streaming,
+      messages: messages,
+      streamingMessage: AiChatMessage(
+        id: assistantId,
+        role: AiChatRole.assistant,
+        content: content,
+        time: time,
+        status: AiChatMessageStatus.streaming,
+      ),
     );
+  }
+
+  void _finishAssistant({
+    required String assistantId,
+    required String content,
+    required String time,
+    required String userId,
+  }) {
+    final messages = [..._markUserSent(state.messages, userId)];
+    messages.add(
+      AiChatMessage(
+        id: assistantId,
+        role: AiChatRole.assistant,
+        content: content,
+        time: time,
+        status: AiChatMessageStatus.sent,
+      ),
+    );
+    state = state.copyWith(
+      phase: AiChatPhase.ready,
+      messages: List.unmodifiable(messages),
+      clearStreamingMessage: true,
+    );
+  }
+
+  List<AiChatMessage> _markUserSent(List<AiChatMessage> source, String userId) {
+    final index = source.indexWhere((item) => item.id == userId);
+    if (index < 0 || source[index].status == AiChatMessageStatus.sent) {
+      return source;
+    }
+    final messages = [...source];
+    messages[index] = messages[index].copyWith(
+      status: AiChatMessageStatus.sent,
+    );
+    return List.unmodifiable(messages);
   }
 
   void _markFailed(String userId, String message) {
@@ -381,6 +456,7 @@ class AiChatController extends Notifier<AiChatState> {
       phase: AiChatPhase.ready,
       messages: List.unmodifiable(messages),
       errorMessage: message,
+      clearStreamingMessage: true,
     );
   }
 

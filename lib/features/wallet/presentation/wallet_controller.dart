@@ -34,6 +34,20 @@ class WalletState {
   );
 }
 
+class WalletRouteActivityController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setActive(bool value) {
+    if (state != value) state = value;
+  }
+}
+
+final walletRouteActivityProvider =
+    NotifierProvider<WalletRouteActivityController, bool>(
+      WalletRouteActivityController.new,
+    );
+
 class WalletController extends Notifier<WalletState> {
   CancelToken? _token;
   Timer? _syncTimer;
@@ -41,6 +55,15 @@ class WalletController extends Notifier<WalletState> {
   @override
   WalletState build() {
     final userId = ref.watch(authSessionUserIdProvider);
+    ref.listen(walletRouteActivityProvider, (_, isActive) {
+      if (!isActive) {
+        _syncTimer?.cancel();
+        _syncTimer = null;
+        return;
+      }
+      final info = state.info;
+      if (info != null) _scheduleSync(info);
+    });
     _token?.cancel('Phiên đăng nhập đã thay đổi');
     _syncTimer?.cancel();
     ref.onDispose(() {
@@ -146,6 +169,8 @@ class WalletController extends Notifier<WalletState> {
 
   void _scheduleSync(EarnCoinsInfo info) {
     _syncTimer?.cancel();
+    _syncTimer = null;
+    if (!ref.read(walletRouteActivityProvider)) return;
     final remaining = info.missions
         .where(
           (item) =>

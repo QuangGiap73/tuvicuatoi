@@ -63,7 +63,13 @@ class ChartResultPage extends ConsumerWidget {
           SafeArea(
             child: CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(child: _ResultAppBar(onBack: context.pop)),
+                SliverToBoxAdapter(
+                  child: _ResultAppBar(
+                    onBack: () => context.canPop()
+                        ? context.pop()
+                        : context.go(AppRoute.horoscope),
+                  ),
+                ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 26),
                   sliver: SliverList.list(

@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +15,7 @@ import 'widgets/home_daily_message_card.dart';
 import 'widgets/home_destiny_discovery_card.dart';
 import 'widgets/home_featured_grid.dart';
 import 'widgets/home_mystic_app_bar.dart';
+import 'widgets/home_menu_sheet.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -27,27 +26,24 @@ class HomePage extends ConsumerWidget {
     background: Stack(
       fit: StackFit.expand,
       children: [
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
-          child: Transform.scale(
-            scale: 1.02,
-            child: Image.asset(
-              MysticAssets.homeBackground,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              cacheWidth:
-                  (MediaQuery.sizeOf(context).width *
-                          MediaQuery.devicePixelRatioOf(context))
-                      .round(),
-              filterQuality: FilterQuality.medium,
-            ),
+        RepaintBoundary(
+          child: Image.asset(
+            MysticAssets.homeBackground,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            cacheWidth:
+                (MediaQuery.sizeOf(context).width *
+                        MediaQuery.devicePixelRatioOf(context))
+                    .round()
+                    .clamp(1, 854),
+            filterQuality: FilterQuality.medium,
           ),
         ),
         const ColoredBox(color: Color(0x58020812)),
       ],
     ),
     appBar: _HomeAppBarConnector(
-      onMenuPressed: () => _showComingSoon(context, 'Menu'),
+      onMenuPressed: () => _openMenu(context, ref),
       onWalletPressed: () => _openWallet(context, ref),
       onAddCoinPressed: () => _openWallet(context, ref),
     ),
@@ -55,29 +51,43 @@ class HomePage extends ConsumerWidget {
       color: MysticColors.gold,
       backgroundColor: MysticColors.midnight,
       onRefresh: () => ref.read(homeControllerProvider.notifier).refresh(),
-      child: ListView(
+      child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          MysticSpacing.md,
-          0,
-          MysticSpacing.md,
-          MysticSpacing.md,
-        ),
-        children: [
-          const _HomeHeroGreeting(),
-          const SizedBox(height: MysticSpacing.sm),
-          HomeDestinyDiscoveryCard(
-            onPressed: () => context.go(AppRoute.horoscope),
-          ),
-          const SizedBox(height: MysticSpacing.xs),
-          const _HomeDailyMessageConnector(),
-          const SizedBox(height: MysticSpacing.xs),
-          HomeFeaturedGrid(
-            onChartPressed: () => context.go(AppRoute.horoscope),
-            onTodayPressed: () => context.go(AppRoute.dailyFortune),
-            onChatPressed: () => _openChat(context, ref),
-            onArticlesPressed: () => context.push(AppRoute.articles),
-            onViewAllPressed: () => _showComingSoon(context, 'Tính năng'),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              MysticSpacing.md,
+              0,
+              MysticSpacing.md,
+              MysticSpacing.md,
+            ),
+            sliver: SliverMainAxisGroup(
+              slivers: [
+                const SliverToBoxAdapter(child: _HomeHeroGreeting()),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: MysticSpacing.sm),
+                ),
+                SliverToBoxAdapter(
+                  child: HomeDestinyDiscoveryCard(
+                    onPressed: () => context.push(AppRoute.horoscope),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: MysticSpacing.xs),
+                ),
+                const SliverToBoxAdapter(child: _HomeDailyMessageConnector()),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: MysticSpacing.xs),
+                ),
+                HomeFeaturedGrid(
+                  onChartPressed: () => context.push(AppRoute.horoscope),
+                  onTodayPressed: () => context.push(AppRoute.dailyFortune),
+                  onChatPressed: () => _openChat(context, ref),
+                  onArticlesPressed: () => context.push(AppRoute.articles),
+                  onViewAllPressed: () => _showComingSoon(context, 'Tính năng'),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -91,9 +101,117 @@ class HomePage extends ConsumerWidget {
         ),
       );
 
+  Future<void> _openMenu(BuildContext context, WidgetRef ref) {
+    final session = ref.read(authControllerProvider).asData?.value;
+    final user = session?.user;
+    return showHomeMenuSheet(
+      context,
+      isAuthenticated: user != null,
+      userName: user?.fullName ?? '',
+      coinBalance: user?.coinBalance ?? 0,
+      onLogin: () => context.push(AuthRoutePolicy.loginLocation(AppRoute.home)),
+      onProfile: () => _openProtected(
+        context,
+        ref,
+        destination: AppRoute.profile,
+        icon: Icons.person_outline_rounded,
+        message:
+            'Đăng nhập để xem hồ sơ, quyền lợi thành viên và đồng bộ dữ liệu của bạn.',
+      ),
+      onHoroscope: () => context.push(AppRoute.horoscope),
+      onInterpretation: () => context.push(AppRoute.interpretation),
+      onDailyFortune: () => context.push(AppRoute.dailyFortune),
+      onArticles: () => context.push(AppRoute.articles),
+      onWallet: () => _openWallet(context, ref),
+      onSavedCharts: () => _openProtected(
+        context,
+        ref,
+        destination: AppRoute.myCharts,
+        icon: Icons.history_rounded,
+        message: 'Đăng nhập để xem và quản lý các lá số bạn đã lưu.',
+      ),
+      onSettings: () => _openProtected(
+        context,
+        ref,
+        destination: AppRoute.accountSettings,
+        icon: Icons.settings_outlined,
+        message: 'Đăng nhập để quản lý bảo mật và cài đặt tài khoản.',
+      ),
+      onPremium: () => _openProtected(
+        context,
+        ref,
+        destination: '${AppRoute.coinPackages}?tab=membership',
+        icon: Icons.workspace_premium_outlined,
+        message: 'Đăng nhập để xem và nâng cấp quyền lợi thành viên Premium.',
+      ),
+      onSupport: () => _showComingSoon(context, 'Trung tâm hỗ trợ'),
+      onPolicy: () => _showComingSoon(context, 'Chính sách sử dụng'),
+      onLogout: () => _confirmLogout(context, ref),
+    );
+  }
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF0B1928),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFFD2A33E)),
+        ),
+        title: const Text(
+          'Đăng xuất tài khoản?',
+          style: TextStyle(color: Color(0xFFFFE4A4)),
+        ),
+        content: const Text(
+          'Bạn vẫn có thể đăng nhập lại để tiếp tục sử dụng dữ liệu đã đồng bộ.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('HỦY'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD3A036),
+              foregroundColor: const Color(0xFF241704),
+            ),
+            child: const Text('ĐĂNG XUẤT'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(authControllerProvider.notifier).logout();
+    }
+  }
+
+  Future<void> _openProtected(
+    BuildContext context,
+    WidgetRef ref, {
+    required String destination,
+    required IconData icon,
+    required String message,
+  }) async {
+    if (ref.read(authControllerProvider).asData?.value != null) {
+      context.push(destination);
+      return;
+    }
+    final shouldLogin = await showLoginRequiredDialog(
+      context,
+      icon: icon,
+      message: message,
+    );
+    if (shouldLogin == true && context.mounted) {
+      context.push(AuthRoutePolicy.loginLocation(destination));
+    }
+  }
+
   Future<void> _openChat(BuildContext context, WidgetRef ref) async {
     if (ref.read(authControllerProvider).asData?.value != null) {
-      context.go(AppRoute.chat);
+      context.push(AppRoute.chat);
       return;
     }
     final shouldLogin = await showLoginRequiredDialog(
@@ -109,7 +227,7 @@ class HomePage extends ConsumerWidget {
 
   Future<void> _openWallet(BuildContext context, WidgetRef ref) async {
     if (ref.read(authControllerProvider).asData?.value != null) {
-      context.go(AppRoute.wallet);
+      context.push(AppRoute.wallet);
       return;
     }
     final shouldLogin = await showLoginRequiredDialog(
@@ -196,8 +314,7 @@ class _HomeHeroGreeting extends StatelessWidget {
                   height: 1.08,
                   fontWeight: FontWeight.w700,
                   shadows: const [
-                    Shadow(color: Color(0xCC000000), blurRadius: 8),
-                    Shadow(color: Color(0x807E541C), blurRadius: 12),
+                    Shadow(color: Color(0xB3000000), blurRadius: 5),
                   ],
                 ),
               ),

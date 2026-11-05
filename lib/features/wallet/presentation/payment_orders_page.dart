@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/assets/mystic_assets.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
@@ -122,9 +123,31 @@ class _PaymentOrdersPageState extends ConsumerState<PaymentOrdersPage> {
                 sliver: SliverList.separated(
                   itemCount: state.orders.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (_, index) => RepaintBoundary(
-                    child: _OrderCard(order: state.orders[index]),
-                  ),
+                  itemBuilder: (_, index) {
+                    final order = state.orders[index];
+                    return RepaintBoundary(
+                      child: InkWell(
+                        onTap: () => context.push(
+                          '/wallet/orders/${Uri.encodeComponent(order.id)}',
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                        child: Stack(
+                          children: [
+                            _OrderCard(order: order),
+                            const Positioned(
+                              right: 10,
+                              bottom: 8,
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 19,
+                                color: Color(0xFF8A704F),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
           ],

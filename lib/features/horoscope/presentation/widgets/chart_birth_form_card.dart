@@ -66,6 +66,11 @@ class _ChartBirthFormCardState extends ConsumerState<ChartBirthFormCard> {
           child: Image.asset(
             MysticAssets.horoscopeFormFrame,
             fit: BoxFit.fill,
+            cacheWidth:
+                (MediaQuery.sizeOf(context).width *
+                        MediaQuery.devicePixelRatioOf(context))
+                    .round()
+                    .clamp(1, 1071),
             filterQuality: FilterQuality.high,
           ),
         ),
@@ -500,7 +505,15 @@ class _GenerateChartButton extends StatelessWidget {
     child: Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(MysticAssets.bottomFrameA, fit: BoxFit.fill),
+        Image.asset(
+          MysticAssets.bottomFrameA,
+          fit: BoxFit.fill,
+          cacheWidth:
+              (MediaQuery.sizeOf(context).width *
+                      MediaQuery.devicePixelRatioOf(context))
+                  .round()
+                  .clamp(1, 1818),
+        ),
         TextButton(
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(

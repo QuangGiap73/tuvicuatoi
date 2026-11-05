@@ -38,6 +38,7 @@ dependencies:
   dio: ^5.11.1
   go_router: ^17.5.0
   flutter_secure_storage: ^11.2.0
+  path_provider: ^2.1.6
   google_sign_in: ^7.2.0
   image_picker: 1.2.3
   image_cropper: 12.2.1
@@ -70,8 +71,18 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/images/backgrounds/
-    - assets/images/home/
+    - assets/images/backgrounds/background_A.png
+    - assets/images/backgrounds/background_doi_la_so_B.png
+    - assets/images/backgrounds/background_home_D.png
+    - assets/images/backgrounds/background_la_so_A.png
+    - assets/images/backgrounds/background_van_han_A.png
+    - assets/images/home/card_home_D.png
+    - assets/images/home/card_thong_diep_home.png
+    - assets/images/home/frame_home_A.png
+    - assets/images/home/outstanding_home_A.png
+    - assets/images/home/outstanding_home_B.png
+    - assets/images/home/outstanding_home_C.png
+    - assets/images/home/outstanding_home_D.png
     - assets/images/profile/
     - assets/images/bottom/
     - assets/images/frame/

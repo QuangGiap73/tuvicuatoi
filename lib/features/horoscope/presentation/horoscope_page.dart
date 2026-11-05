@@ -26,7 +26,8 @@ class HoroscopePage extends ConsumerWidget {
             cacheWidth:
                 (MediaQuery.sizeOf(context).width *
                         MediaQuery.devicePixelRatioOf(context))
-                    .round(),
+                    .round()
+                    .clamp(1, 854),
             filterQuality: FilterQuality.medium,
           ),
           const ColoredBox(color: Color(0x8A030A12)),
@@ -34,7 +35,7 @@ class HoroscopePage extends ConsumerWidget {
       ),
       body: ListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 92),
+        padding: const EdgeInsets.fromLTRB(14, 7, 14, 92),
         children: [
           const Text(
             'Lập Lá Số Tử Vi',
@@ -42,34 +43,27 @@ class HoroscopePage extends ConsumerWidget {
             style: TextStyle(
               color: Color(0xFFFFE8B4),
               fontFamily: 'serif',
-              fontSize: 34,
-              height: 1.05,
+              fontSize: 28,
+              height: 1.02,
               fontWeight: FontWeight.w700,
-              shadows: [
-                Shadow(
-                  color: Colors.black,
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-                Shadow(color: Color(0x997C501B), blurRadius: 12),
-              ],
+              shadows: [Shadow(color: Colors.black, blurRadius: 5)],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18),
+            padding: EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'Điền thông tin sinh để mở ra lá số, khám phá 12 cung và bắt đầu hành trình luận giải của riêng bạn.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFFE1D8C8),
-                fontSize: 13,
-                height: 1.45,
-                shadows: [Shadow(color: Colors.black, blurRadius: 5)],
+                fontSize: 11.5,
+                height: 1.35,
+                shadows: [Shadow(color: Colors.black, blurRadius: 3)],
               ),
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 13),
           ChartBirthFormCard(
             isSubmitting: generation.isGenerating,
             onSubmit: () => _submit(context, ref),

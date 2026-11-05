@@ -6,6 +6,7 @@ import '../../core/theme/mystic_colors.dart';
 import '../../core/widgets/mystic_bottom_nav.dart';
 import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/auth/presentation/login_required_dialog.dart';
+import '../../features/wallet/presentation/wallet_controller.dart';
 import 'auth_route_policy.dart';
 
 class AppShell extends ConsumerWidget {
@@ -39,6 +40,15 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final walletIsActive = navigationShell.currentIndex == 3;
+    final recordedWalletActivity = ref.read(walletRouteActivityProvider);
+    if (recordedWalletActivity != walletIsActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(walletRouteActivityProvider.notifier)
+            .setActive(walletIsActive);
+      });
+    }
     return Scaffold(
       backgroundColor: MysticColors.midnight,
       extendBody: true,

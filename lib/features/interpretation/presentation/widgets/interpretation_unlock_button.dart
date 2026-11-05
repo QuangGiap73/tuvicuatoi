@@ -30,7 +30,15 @@ class InterpretationUnlockButton extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const RepaintBoundary(child: _FrameBackground()),
+          RepaintBoundary(
+            child: _FrameBackground(
+              cacheWidth:
+                  (MediaQuery.sizeOf(context).width *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .round()
+                      .clamp(1, 2065),
+            ),
+          ),
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -117,12 +125,15 @@ class InterpretationUnlockButton extends StatelessWidget {
 }
 
 class _FrameBackground extends StatelessWidget {
-  const _FrameBackground();
+  const _FrameBackground({required this.cacheWidth});
+
+  final int cacheWidth;
 
   @override
   Widget build(BuildContext context) => Image.asset(
     MysticAssets.upgradeFrameB,
     fit: BoxFit.fill,
+    cacheWidth: cacheWidth,
     filterQuality: FilterQuality.medium,
   );
 }

@@ -25,22 +25,22 @@ class HomeDestinyDiscoveryCard extends StatelessWidget {
         child: Container(
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(15)),
           child: Stack(
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: Transform.scale(
-                  alignment: Alignment.topCenter,
-                  scaleX: 1.045,
-                  scaleY: 1.06,
-                  child: Image.asset(
-                    MysticAssets.homeDestinyCard,
-                    fit: BoxFit.fill,
-                    cacheWidth: cacheWidth,
-                    filterQuality: FilterQuality.medium,
+                child: RepaintBoundary(
+                  child: Transform.scale(
+                    alignment: Alignment.topCenter,
+                    scaleX: 1.045,
+                    scaleY: 1.06,
+                    child: Image.asset(
+                      MysticAssets.homeDestinyCard,
+                      fit: BoxFit.fill,
+                      cacheWidth: cacheWidth.clamp(1, 1680),
+                      filterQuality: FilterQuality.medium,
+                    ),
                   ),
                 ),
               ),
@@ -57,51 +57,51 @@ class HomeDestinyDiscoveryCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        const Text(
-                          'LẬP LÁ SỐ TỬ VI',
-                          style: TextStyle(
-                            color: MysticColors.gold,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.25,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Khám phá bản mệnh',
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(
-                              color: Color(0xFFFFE4AD),
-                              fontFamily: 'serif',
-                              fontSize: 18.5,
-                              height: 1.12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: .1,
-                              shadows: [
-                                Shadow(
-                                  color: Color(0xB3000000),
-                                  blurRadius: 6,
-                                ),
-                              ],
+                            const Text(
+                              'LẬP LÁ SỐ TỬ VI',
+                              style: TextStyle(
+                                color: MysticColors.gold,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.25,
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 9),
-                        const Text(
-                          'Giải mã lá số – hiểu rõ bản thân\nNắm bắt thời vận.',
-                          style: TextStyle(
-                            color: Color(0xFFE1D9CA),
-                            fontSize: 12,
-                            height: 1.35,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        _DiscoveryButton(onPressed: onPressed),
+                            const SizedBox(height: 7),
+                            const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Khám phá bản mệnh',
+                                maxLines: 1,
+                                softWrap: false,
+                                style: TextStyle(
+                                  color: Color(0xFFFFE4AD),
+                                  fontFamily: 'serif',
+                                  fontSize: 18.5,
+                                  height: 1.12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: .1,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0xB3000000),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            const Text(
+                              'Giải mã lá số – hiểu rõ bản thân\nNắm bắt thời vận.',
+                              style: TextStyle(
+                                color: Color(0xFFE1D9CA),
+                                fontSize: 12,
+                                height: 1.35,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            _DiscoveryButton(onPressed: onPressed),
                           ],
                         ),
                       ),

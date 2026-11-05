@@ -27,7 +27,7 @@ class HomeDailyMessageCard extends StatelessWidget {
           image: DecorationImage(
             image: ResizeImage(
               const AssetImage(MysticAssets.homeDailyMessageCard),
-              width: cacheWidth,
+              width: cacheWidth.clamp(1, 1680),
             ),
             fit: BoxFit.fill,
             filterQuality: FilterQuality.medium,

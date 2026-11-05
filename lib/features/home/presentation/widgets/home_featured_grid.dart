@@ -51,56 +51,58 @@ class HomeFeaturedGrid extends StatelessWidget {
       ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Tính năng nổi bật',
-                style: TextStyle(
-                  color: Color(0xFFFFE3A0),
-                  fontFamily: 'serif',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 5)],
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Tính năng nổi bật',
+                  style: TextStyle(
+                    color: Color(0xFFFFE3A0),
+                    fontFamily: 'serif',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    shadows: [Shadow(color: Colors.black, blurRadius: 5)],
+                  ),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: onViewAllPressed,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFD8B66F),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              TextButton(
+                onPressed: onViewAllPressed,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFD8B66F),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Xem tất cả', style: TextStyle(fontSize: 12)),
+                    SizedBox(width: 3),
+                    Icon(Icons.chevron_right_rounded, size: 17),
+                  ],
+                ),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Xem tất cả', style: TextStyle(fontSize: 12)),
-                  SizedBox(width: 3),
-                  Icon(Icons.chevron_right_rounded, size: 17),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        GridView.builder(
-          primary: false,
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: items.length,
+        const SliverToBoxAdapter(child: SizedBox(height: 4)),
+        SliverGrid(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => _FeaturedTile(item: items[index]),
+            childCount: items.length,
+          ),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 0,
             crossAxisSpacing: 0,
             childAspectRatio: 1.12,
           ),
-          itemBuilder: (context, index) => _FeaturedTile(item: items[index]),
         ),
       ],
     );
@@ -171,7 +173,7 @@ class _FeaturedTile extends StatelessWidget {
                               item.backgroundAsset!,
                               fit: BoxFit.cover,
                               alignment: Alignment.centerRight,
-                              cacheWidth: cacheWidth,
+                              cacheWidth: cacheWidth.clamp(1, 1680),
                               filterQuality: FilterQuality.medium,
                             ),
                           ),
@@ -192,7 +194,7 @@ class _FeaturedTile extends StatelessWidget {
                 Image.asset(
                   MysticAssets.homeFeatureFrame,
                   fit: BoxFit.fill,
-                  cacheWidth: cacheWidth,
+                  cacheWidth: cacheWidth.clamp(1, 1680),
                   filterQuality: FilterQuality.medium,
                 ),
                 Padding(

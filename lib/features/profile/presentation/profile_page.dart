@@ -41,7 +41,8 @@ class ProfilePage extends ConsumerWidget {
         ],
       ),
       appBar: ProfileMysticAppBar(
-        onBackPressed: () => context.go(AppRoute.home),
+        onBackPressed: () =>
+            context.canPop() ? context.pop() : context.go(AppRoute.home),
         onSettingsPressed: () => context.push(AppRoute.accountSettings),
       ),
       body: ListView(

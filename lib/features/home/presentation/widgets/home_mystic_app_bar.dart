@@ -37,9 +37,9 @@ class HomeMysticAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Color(0x44000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
+              color: Color(0x33000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
             ),
           ],
         ),

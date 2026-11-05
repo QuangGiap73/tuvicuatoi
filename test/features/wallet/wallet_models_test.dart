@@ -92,6 +92,25 @@ void main() {
     expect(info.statusFor(info.checkInDays[2]), CheckInDayStatus.current);
   });
 
+  test('does not expose the next day after checking in today', () {
+    final info = EarnCoinsInfo.fromJson({
+      'hasCheckedInToday': true,
+      'streakDays': 1,
+      'currentCheckInDay': 2,
+      'completedCheckInDays': [1],
+      'checkInDays': [
+        {'day': 1, 'rewardCoins': 30, 'status': 'completed'},
+        {'day': 2, 'rewardCoins': 40, 'status': 'current'},
+        {'day': 3, 'rewardCoins': 50, 'status': 'upcoming'},
+      ],
+      'missions': [],
+    });
+
+    expect(info.statusFor(info.checkInDays[0]), CheckInDayStatus.completed);
+    expect(info.statusFor(info.checkInDays[1]), CheckInDayStatus.upcoming);
+    expect(info.statusFor(info.checkInDays[2]), CheckInDayStatus.upcoming);
+  });
+
   test('parses transaction amount and package values from backend', () {
     final transaction = CoinTransaction.fromJson({
       'id': 'tx-1',

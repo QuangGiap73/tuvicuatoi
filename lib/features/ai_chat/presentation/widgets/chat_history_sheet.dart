@@ -19,8 +19,18 @@ class _ChatHistorySheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(aiChatControllerProvider);
-    final messages = state.messages
+    final view = ref.watch(
+      aiChatControllerProvider.select(
+        (state) => (
+          messages: state.messages,
+          chartName: state.selectedChart?.displayName,
+          hasChart: state.selectedChart != null,
+          isLoading: state.isLoadingHistory,
+          isClearing: state.isClearingHistory,
+        ),
+      ),
+    );
+    final messages = view.messages
         .where((message) => message.id != 'welcome')
         .toList(growable: false);
 
@@ -68,7 +78,7 @@ class _ChatHistorySheet extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          state.selectedChart?.displayName ?? 'Chưa chọn lá số',
+                          view.chartName ?? 'Chưa chọn lá số',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -89,7 +99,7 @@ class _ChatHistorySheet extends ConsumerWidget {
               ),
             ),
             const Divider(height: 1, color: Color(0x669C783E)),
-            if (state.isLoadingHistory)
+            if (view.isLoading)
               const LinearProgressIndicator(
                 minHeight: 2,
                 color: Color(0xFFC28B2C),
@@ -113,21 +123,17 @@ class _ChatHistorySheet extends ConsumerWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed:
-                      messages.isEmpty ||
-                          state.isClearingHistory ||
-                          state.selectedChart == null
+                      messages.isEmpty || view.isClearing || !view.hasChart
                       ? null
                       : () => _confirmClear(context, ref),
-                  icon: state.isClearingHistory
+                  icon: view.isClearing
                       ? const SizedBox.square(
                           dimension: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.delete_outline_rounded, size: 19),
                   label: Text(
-                    state.isClearingHistory
-                        ? 'ĐANG XÓA...'
-                        : 'XÓA LỊCH SỬ LÁ SỐ NÀY',
+                    view.isClearing ? 'ĐANG XÓA...' : 'XÓA LỊCH SỬ LÁ SỐ NÀY',
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF9D2635),

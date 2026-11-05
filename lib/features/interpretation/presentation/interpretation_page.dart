@@ -55,7 +55,9 @@ class InterpretationPage extends ConsumerWidget {
                       SliverToBoxAdapter(
                         child: _LiveHeader(
                           chart: chart,
-                          onBack: context.pop,
+                          onBack: () => context.canPop()
+                              ? context.pop()
+                              : context.go(AppRoute.horoscope),
                           onChangeChart: () =>
                               _changeChart(context, ref, chart.chartId),
                         ),
@@ -244,7 +246,7 @@ class InterpretationPage extends ConsumerWidget {
         action: result == null && balance < estimatedCost
             ? SnackBarAction(
                 label: 'NẠP XU',
-                onPressed: () => context.go(AppRoute.wallet),
+                onPressed: () => context.push(AppRoute.wallet),
               )
             : null,
       ),
@@ -439,7 +441,7 @@ class InterpretationPage extends ConsumerWidget {
         action: result == null && balance < section.coinCost
             ? SnackBarAction(
                 label: 'NẠP XU',
-                onPressed: () => context.go(AppRoute.wallet),
+                onPressed: () => context.push(AppRoute.wallet),
               )
             : null,
       ),
@@ -994,7 +996,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-
 class _CoinBadge extends StatelessWidget {
   const _CoinBadge({required this.balance});
 
@@ -1045,11 +1046,7 @@ class _CoinBadge extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.monetization_on,
-                  color: gold,
-                  size: 14,
-                ),
+                const Icon(Icons.monetization_on, color: gold, size: 14),
                 const SizedBox(width: 4),
                 Text(
                   '${_formatBalance(balance)} Xu',

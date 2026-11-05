@@ -628,18 +628,14 @@ class _CheckInDayTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final completed = status == CheckInDayStatus.completed;
-    final isCurrentDay = status == CheckInDayStatus.current;
-    final highlighted = completed || isCurrentDay;
+    final highlighted = completed;
     return Container(
       width: 55,
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: highlighted ? const Color(0xFF0D5A58) : const Color(0xFFF8E8BE),
-        border: Border.all(
-          color: isCurrentDay ? const Color(0xFF55E8C9) : _gold,
-          width: isCurrentDay ? 1.5 : 1,
-        ),
+        border: Border.all(color: _gold, width: 1),
         borderRadius: BorderRadius.circular(10),
         boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
       ),
@@ -992,15 +988,15 @@ Future<void> _missionAction(
     return;
   }
   if (mission.actionType == 'NAVIGATE_CREATE') {
-    context.go(AppRoute.horoscope);
+    context.push(AppRoute.horoscope);
     return;
   }
   if (mission.actionType == 'NAVIGATE_PROFILE') {
-    context.go(AppRoute.profile);
+    context.push(AppRoute.profile);
     return;
   }
   if (mission.actionType == 'READ_NEWS') {
-    context.go(
+    context.push(
       '${AppRoute.articles}?missionCode=${Uri.encodeQueryComponent(mission.code)}',
     );
     return;

@@ -132,24 +132,37 @@ class EarnCoinsInfo {
   }
 
   CheckInDayStatus statusFor(CheckInDay day) {
-    if (day.status != null) return day.status!;
+    final explicitStatus = day.status;
+    if (explicitStatus == CheckInDayStatus.completed ||
+        explicitStatus == CheckInDayStatus.missed) {
+      return explicitStatus!;
+    }
     if (completedCheckInDays.contains(day.day)) {
       return CheckInDayStatus.completed;
     }
     if (missedCheckInDays.contains(day.day)) return CheckInDayStatus.missed;
+
+    // Some backends advance `currentDay` (or mark the next item as current)
+    // immediately after a successful check-in. It is still an upcoming day
+    // until the user's local calendar reaches the next day.
+    if (hasCheckedInToday) {
+      if (!hasExplicitCheckInSchedule && day.day <= streakDays) {
+        return CheckInDayStatus.completed;
+      }
+      return CheckInDayStatus.upcoming;
+    }
+
+    if (explicitStatus == CheckInDayStatus.current) {
+      return CheckInDayStatus.current;
+    }
     if (day.day == currentCheckInDay) {
-      return hasCheckedInToday
-          ? CheckInDayStatus.completed
-          : CheckInDayStatus.current;
+      return CheckInDayStatus.current;
     }
     if (hasExplicitCheckInSchedule) return CheckInDayStatus.upcoming;
     if (day.day <= streakDays) return CheckInDayStatus.completed;
     final legacyCurrent = checkInDays.isEmpty
         ? 0
-        : (hasCheckedInToday ? streakDays : streakDays + 1).clamp(
-            1,
-            checkInDays.length,
-          );
+        : (streakDays + 1).clamp(1, checkInDays.length);
     return day.day == legacyCurrent
         ? CheckInDayStatus.current
         : CheckInDayStatus.upcoming;

@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../domain/ai_chat_message.dart';
 
@@ -20,15 +23,34 @@ abstract interface class AiChatHistoryStore {
   Future<void> delete({required String userId, required String chartId});
 }
 
-class SecureAiChatHistoryStore implements AiChatHistoryStore {
-  const SecureAiChatHistoryStore(this._storage);
+/// Keeps the bounded chat cache in app-support storage. Secure storage is only
+/// read once to migrate cache written by older app versions.
+class FileAiChatHistoryStore implements AiChatHistoryStore {
+  FileAiChatHistoryStore(this._legacyStorage);
 
-  final FlutterSecureStorage _storage;
-  static const _maxMessagesPerChart = 100;
+  final FlutterSecureStorage _legacyStorage;
+  static const _maxMessagesPerChart = 40;
+  static const _maxContentCharacters = 120000;
+  Directory? _cacheDirectory;
 
-  String _key(String userId, String chartId) =>
+  String _storageKey(String userId, String chartId) =>
       'ai_chat_history_${base64Url.encode(utf8.encode(userId))}_'
       '${base64Url.encode(utf8.encode(chartId))}';
+
+  Future<Directory> _directory() async {
+    final cached = _cacheDirectory;
+    if (cached != null) return cached;
+    final support = await getApplicationSupportDirectory();
+    final directory = Directory('${support.path}/ai_chat_history');
+    if (!await directory.exists()) await directory.create(recursive: true);
+    _cacheDirectory = directory;
+    return directory;
+  }
+
+  Future<File> _file(String userId, String chartId) async {
+    final directory = await _directory();
+    return File('${directory.path}/${_storageKey(userId, chartId)}.json');
+  }
 
   @override
   Future<List<AiChatMessage>> read({
@@ -36,9 +58,20 @@ class SecureAiChatHistoryStore implements AiChatHistoryStore {
     required String chartId,
   }) async {
     try {
-      final value = await _storage.read(key: _key(userId, chartId));
+      final file = await _file(userId, chartId);
+      var value = await file.exists() ? await file.readAsString() : null;
+
+      if (value == null || value.isEmpty) {
+        final legacyKey = _storageKey(userId, chartId);
+        value = await _legacyStorage.read(key: legacyKey);
+        if (value != null && value.isNotEmpty) {
+          await file.writeAsString(value, flush: true);
+          await _legacyStorage.delete(key: legacyKey);
+        }
+      }
       if (value == null || value.isEmpty) return const [];
-      final decoded = jsonDecode(value);
+
+      final decoded = await Isolate.run<Object?>(() => jsonDecode(value!));
       if (decoded is! List) return const [];
       return List.unmodifiable(
         decoded
@@ -60,31 +93,49 @@ class SecureAiChatHistoryStore implements AiChatHistoryStore {
     required List<AiChatMessage> messages,
   }) async {
     try {
-      final persistable = messages
-          .where(
-            (message) =>
-                message.id != 'welcome' &&
-                message.content.trim().isNotEmpty &&
-                message.status != AiChatMessageStatus.streaming,
-          )
+      final selected = <AiChatMessage>[];
+      var contentCharacters = 0;
+      for (final message in messages.reversed) {
+        if (message.id == 'welcome' ||
+            message.content.trim().isEmpty ||
+            message.status == AiChatMessageStatus.streaming) {
+          continue;
+        }
+        final nextCharacters = contentCharacters + message.content.length;
+        if (selected.isNotEmpty &&
+            (selected.length >= _maxMessagesPerChart ||
+                nextCharacters > _maxContentCharacters)) {
+          break;
+        }
+        selected.add(message);
+        contentCharacters = nextCharacters;
+      }
+      final payload = selected.reversed
+          .map((message) => message.toJson())
           .toList(growable: false);
-      final start = persistable.length > _maxMessagesPerChart
-          ? persistable.length - _maxMessagesPerChart
-          : 0;
-      final encoded = jsonEncode(
-        persistable.skip(start).map((message) => message.toJson()).toList(),
-      );
-      await _storage.write(key: _key(userId, chartId), value: encoded);
+      final encoded = await Isolate.run(() => jsonEncode(payload));
+      final file = await _file(userId, chartId);
+      final temporary = File('${file.path}.tmp');
+      await temporary.writeAsString(encoded, flush: true);
+      if (await file.exists()) await file.delete();
+      await temporary.rename(file.path);
     } catch (_) {
-      // Cache cục bộ không được phép làm hỏng luồng trả lời AI.
+      // Local cache must never turn a successful AI answer into a failure.
     }
   }
 
   @override
-  Future<void> delete({required String userId, required String chartId}) =>
-      _storage.delete(key: _key(userId, chartId));
+  Future<void> delete({required String userId, required String chartId}) async {
+    final legacyKey = _storageKey(userId, chartId);
+    try {
+      final file = await _file(userId, chartId);
+      if (await file.exists()) await file.delete();
+    } finally {
+      await _legacyStorage.delete(key: legacyKey);
+    }
+  }
 }
 
 final aiChatHistoryStoreProvider = Provider<AiChatHistoryStore>(
-  (_) => const SecureAiChatHistoryStore(FlutterSecureStorage()),
+  (_) => FileAiChatHistoryStore(const FlutterSecureStorage()),
 );

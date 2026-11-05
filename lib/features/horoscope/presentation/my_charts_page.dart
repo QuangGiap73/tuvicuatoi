@@ -51,8 +51,10 @@ class MyChartsPage extends ConsumerWidget {
                     slivers: [
                       SliverToBoxAdapter(
                         child: _MyChartsHero(
-                          onBack: context.pop,
-                          onCreate: () => context.go(AppRoute.horoscope),
+                          onBack: () => context.canPop()
+                              ? context.pop()
+                              : context.go(AppRoute.profile),
+                          onCreate: () => context.push(AppRoute.horoscope),
                         ),
                       ),
                       SliverPadding(
@@ -61,8 +63,8 @@ class MyChartsPage extends ConsumerWidget {
                           child: _ChartVaultSummary(
                             user: user,
                             loadedCount: state.charts.length,
-                            onCreate: () => context.go(AppRoute.horoscope),
-                            onUpgrade: () => context.go(AppRoute.wallet),
+                            onCreate: () => context.push(AppRoute.horoscope),
+                            onUpgrade: () => context.push(AppRoute.wallet),
                           ),
                         ),
                       ),
@@ -89,7 +91,7 @@ class MyChartsPage extends ConsumerWidget {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
                           sliver: SliverToBoxAdapter(
                             child: _EmptyState(
-                              onCreate: () => context.go(AppRoute.horoscope),
+                              onCreate: () => context.push(AppRoute.horoscope),
                             ),
                           ),
                         )
@@ -122,7 +124,7 @@ class MyChartsPage extends ConsumerWidget {
                                             aiChatControllerProvider.notifier,
                                           )
                                           .selectChart(chart);
-                                      context.go(AppRoute.chat);
+                                      context.push(AppRoute.chat);
                                     },
                                     onDelete: () =>
                                         _confirmDelete(context, ref, chart.id),

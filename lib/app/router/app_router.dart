@@ -25,6 +25,7 @@ import '../../features/wallet/presentation/coin_packages_page.dart';
 import '../../features/wallet/presentation/state/top_up_state.dart';
 import '../../features/wallet/presentation/coin_transactions_page.dart';
 import '../../features/wallet/presentation/payment_orders_page.dart';
+import '../../features/wallet/presentation/payment_order_detail_page.dart';
 import 'app_shell.dart';
 import 'auth_route_policy.dart';
 
@@ -170,6 +171,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'orders',
                     builder: (_, _) => const PaymentOrdersPage(),
+                    routes: [
+                      GoRoute(
+                        path: ':orderId',
+                        builder: (_, state) => PaymentOrderDetailPage(
+                          orderId: state.pathParameters['orderId'] ?? '',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

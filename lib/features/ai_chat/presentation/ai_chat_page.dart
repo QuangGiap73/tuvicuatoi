@@ -102,8 +102,11 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
     ref.listen(
       aiChatControllerProvider.select(
         (state) => (
-          count: state.messages.length,
-          lastRole: state.messages.isEmpty ? null : state.messages.last.role,
+          count:
+              state.messages.length + (state.streamingMessage == null ? 0 : 1),
+          lastRole:
+              state.streamingMessage?.role ??
+              (state.messages.isEmpty ? null : state.messages.last.role),
         ),
       ),
       (previous, next) {
@@ -145,7 +148,7 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
               MysticAssets.myChartsBackground,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
-              cacheWidth: (screenWidth * dpr).round(),
+              cacheWidth: (screenWidth * dpr).round().clamp(1, 887),
               filterQuality: FilterQuality.medium,
             ),
           ),
@@ -225,7 +228,7 @@ class _AiChatAccessBoundary extends StatelessWidget {
               MysticAssets.myChartsBackground,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
-              cacheWidth: (width * dpr).round(),
+              cacheWidth: (width * dpr).round().clamp(1, 887),
             ),
           ),
           const ColoredBox(color: Color(0x8A010813)),
@@ -892,7 +895,7 @@ class _MainChatFrame extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cacheWidth = (screenWidth * dpr).round();
+        final cacheWidth = (screenWidth * dpr).round().clamp(1, 941);
 
         return Stack(
           fit: StackFit.expand,
@@ -961,6 +964,7 @@ class _ConversationList extends ConsumerWidget {
           selectedChart: state.selectedChart,
           phase: state.phase,
           waiting: state.isWaitingForFirstToken,
+          streaming: state.streamingMessage != null,
         ),
       ),
     );
@@ -986,11 +990,9 @@ class _ConversationList extends ConsumerWidget {
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(0, 14, 0, 82),
               children: [
-                RepaintBoundary(
-                  child: AiChatMessageBubble(
-                    key: ValueKey(messages.single.id),
-                    message: messages.single,
-                  ),
+                AiChatMessageBubble(
+                  key: ValueKey(messages.single.id),
+                  message: messages.single,
                 ),
               ],
             ),
@@ -1005,7 +1007,8 @@ class _ConversationList extends ConsumerWidget {
       );
     }
 
-    final conversationItemCount = messages.length + (chat.waiting ? 1 : 0);
+    final conversationItemCount =
+        messages.length + (chat.streaming || chat.waiting ? 1 : 0);
     return CustomScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(
@@ -1020,12 +1023,13 @@ class _ConversationList extends ConsumerWidget {
             itemBuilder: (context, index) {
               if (index < messages.length) {
                 final message = messages[index];
-                return RepaintBoundary(
-                  child: AiChatMessageBubble(
-                    key: ValueKey(message.id),
-                    message: message,
-                  ),
+                return AiChatMessageBubble(
+                  key: ValueKey(message.id),
+                  message: message,
                 );
+              }
+              if (chat.streaming) {
+                return const _StreamingAssistantBubble();
               }
               return const _TypingIndicator();
             },
@@ -1046,6 +1050,19 @@ class _ConversationList extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+class _StreamingAssistantBubble extends ConsumerWidget {
+  const _StreamingAssistantBubble();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final message = ref.watch(
+      aiChatControllerProvider.select((state) => state.streamingMessage),
+    );
+    if (message == null) return const SizedBox.shrink();
+    return AiChatMessageBubble(key: ValueKey(message.id), message: message);
   }
 }
 
@@ -1338,7 +1355,9 @@ class _Composer extends ConsumerWidget {
             child: Image.asset(
               MysticAssets.aiChatComposerFrame,
               fit: BoxFit.fill,
-              cacheWidth: (MediaQuery.sizeOf(context).width * dpr).round(),
+              cacheWidth: (MediaQuery.sizeOf(context).width * dpr)
+                  .round()
+                  .clamp(1, 2172),
               filterQuality: FilterQuality.medium,
             ),
           ),

@@ -16,6 +16,7 @@ class AiChatState {
     this.selectedTopic = 0,
     this.phase = AiChatPhase.ready,
     this.messages = welcomeMessages,
+    this.streamingMessage,
     this.selectedChart,
     this.selectedChartDetail,
     this.errorMessage,
@@ -24,6 +25,7 @@ class AiChatState {
   final int selectedTopic;
   final AiChatPhase phase;
   final List<AiChatMessage> messages;
+  final AiChatMessage? streamingMessage;
   final SavedChart? selectedChart;
   final SavedChartDetail? selectedChartDetail;
   final String? errorMessage;
@@ -43,15 +45,20 @@ class AiChatState {
     int? selectedTopic,
     AiChatPhase? phase,
     List<AiChatMessage>? messages,
+    AiChatMessage? streamingMessage,
     SavedChart? selectedChart,
     SavedChartDetail? selectedChartDetail,
     String? errorMessage,
     bool clearDetail = false,
     bool clearError = false,
+    bool clearStreamingMessage = false,
   }) => AiChatState(
     selectedTopic: selectedTopic ?? this.selectedTopic,
     phase: phase ?? this.phase,
     messages: messages ?? this.messages,
+    streamingMessage: clearStreamingMessage
+        ? null
+        : streamingMessage ?? this.streamingMessage,
     selectedChart: selectedChart ?? this.selectedChart,
     selectedChartDetail: clearDetail
         ? null

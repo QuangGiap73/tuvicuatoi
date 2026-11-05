@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../core/theme/mystic_colors.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../state/ai_chat_route_activity.dart';
 
 class GlobalAiChatLauncher extends ConsumerStatefulWidget {
   const GlobalAiChatLauncher({required this.child, super.key});
@@ -109,12 +110,18 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
     return ListenableBuilder(
       listenable: router.routeInformationProvider,
       builder: (context, _) {
-        final hideOnPalaceDetail = router
-            .routeInformationProvider
-            .value
-            .uri
-            .path
-            .contains('palace-detail');
+        final currentPath = router.routeInformationProvider.value.uri.path;
+        final hideOnAiChat = currentPath == AppRoute.chat;
+        final hideOnPalaceDetail = currentPath.contains('palace-detail');
+        final routeActivity = ref.read(aiChatRouteActivityProvider);
+        if (routeActivity != hideOnAiChat) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ref
+                .read(aiChatRouteActivityProvider.notifier)
+                .setActive(hideOnAiChat);
+          });
+        }
         return LayoutBuilder(
           builder: (context, constraints) {
             final minX = _edgeMargin;
@@ -141,7 +148,10 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
               fit: StackFit.expand,
               children: [
                 widget.child,
-                if (isAuthenticated && !keyboardOpen && !hideOnPalaceDetail)
+                if (isAuthenticated &&
+                    !keyboardOpen &&
+                    !hideOnAiChat &&
+                    !hideOnPalaceDetail)
                   Positioned(
                     left: position.dx,
                     top: position.dy,
