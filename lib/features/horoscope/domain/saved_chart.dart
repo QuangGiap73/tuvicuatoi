@@ -40,7 +40,10 @@ class SavedChart {
     return '';
   }
 
-  factory SavedChart.fromJson(Map<String, dynamic> json) {
+  factory SavedChart.fromJson(
+    Map<String, dynamic> json, {
+    bool retainChartData = true,
+  }) {
     final nested = _nestedData(json);
     String? optional(Object? value) {
       final text = value?.toString().trim();
@@ -83,7 +86,10 @@ class SavedChart {
         json['menh'] ?? json['element'] ?? nested['menh'] ?? nested['element'],
       ),
       cuc: optional(json['cuc'] ?? nested['cuc']),
-      chartData: Map.unmodifiable(nested),
+      // The list screen only needs summary fields. Keeping every full
+      // 12-palace payload here makes a large history response expensive to
+      // parse and retain; detail consumers already load /charts/{id}/.
+      chartData: retainChartData ? Map.unmodifiable(nested) : const {},
     );
   }
 

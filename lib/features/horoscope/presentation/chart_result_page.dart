@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../interpretation/domain/interpretation_models.dart';
 import '../../auth/presentation/require_authentication.dart';
 import '../../interpretation/presentation/controllers/interpretation_controller.dart';
 import '../../palace_detail/domain/palace_detail_models.dart';
 import '../../palace_detail/presentation/controllers/palace_detail_controller.dart';
 import '../domain/chart_result.dart';
+import 'chart_save_guard.dart';
 import 'providers/chart_form_providers.dart';
 import 'widgets/chart_palace_board.dart';
 import 'widgets/chart_result_actions.dart';
@@ -107,16 +109,33 @@ class ChartResultPage extends ConsumerWidget {
     )) {
       return;
     }
+    if (!await confirmChartSaveIfNeeded(context, ref) || !context.mounted) {
+      return;
+    }
+    final balanceBefore = ref
+        .read(authControllerProvider)
+        .asData
+        ?.value
+        ?.user
+        .coinBalance;
     final success = await ref
         .read(chartGenerationControllerProvider.notifier)
         .save();
     if (!context.mounted) return;
     final state = ref.read(chartGenerationControllerProvider);
+    final receipt = state.saveResult;
+    final inferredSpent =
+        receipt?.coinsSpent ??
+        (receipt?.coinBalance == null || balanceBefore == null
+            ? null
+            : (balanceBefore - receipt!.coinBalance!).clamp(0, balanceBefore));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           success
-              ? 'Đã lưu lá số vào tài khoản.'
+              ? inferredSpent != null && inferredSpent > 0
+                    ? 'Đã lưu lá số và sử dụng $inferredSpent Xu.'
+                    : 'Đã lưu lá số vào tài khoản.'
               : state.errorMessage ?? 'Không thể lưu lá số.',
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_provider.dart';
 import '../domain/chart_request.dart';
 import '../domain/chart_result.dart';
+import '../domain/chart_save_result.dart';
 import '../domain/saved_chart.dart';
 import '../domain/saved_chart_detail.dart';
 
@@ -41,6 +42,16 @@ class ChartRepository {
     ChartRequest request,
     ChartResult result, {
     CancelToken? cancelToken,
+  }) async => (await saveWithReceipt(
+    request,
+    result,
+    cancelToken: cancelToken,
+  )).chartId;
+
+  Future<ChartSaveResult> saveWithReceipt(
+    ChartRequest request,
+    ChartResult result, {
+    CancelToken? cancelToken,
   }) async {
     try {
       final response = await _dio.post<Object?>(
@@ -56,14 +67,17 @@ class ChartRepository {
       if (body is! Map || body['success'] != true) {
         throw const ChartException('Không thể lưu lá số.');
       }
-      return (body['chartId'] ?? body['id'] ?? '').toString();
+      return ChartSaveResult.fromJson(Map<String, dynamic>.from(body));
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) rethrow;
       throw ChartException(_errorMessage(error));
     }
   }
 
-  Future<List<SavedChart>> getMyCharts({CancelToken? cancelToken}) async {
+  Future<List<SavedChart>> getMyCharts({
+    CancelToken? cancelToken,
+    bool retainChartData = true,
+  }) async {
     try {
       final response = await _dio.get<Object?>(
         '/charts/my-charts/',
@@ -75,7 +89,12 @@ class ChartRepository {
       }
       return (body['charts'] as List)
           .whereType<Map>()
-          .map((item) => SavedChart.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => SavedChart.fromJson(
+              Map<String, dynamic>.from(item),
+              retainChartData: retainChartData,
+            ),
+          )
           .toList(growable: false);
     } on DioException catch (error) {
       throw ChartException(_errorMessage(error));
@@ -122,7 +141,12 @@ class ChartRepository {
   String _errorMessage(DioException error) {
     final data = error.response?.data;
     if (data is Map) {
-      final message = data['message'] ?? data['error'] ?? data['detail'];
+      final error = data['error'];
+      final nestedMessage = error is Map
+          ? error['message'] ?? error['detail']
+          : null;
+      final message =
+          data['message'] ?? nestedMessage ?? data['detail'] ?? error;
       if (message is String && message.trim().isNotEmpty) return message;
     }
     return error.userMessage;

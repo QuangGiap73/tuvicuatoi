@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
+import '../../ai_chat/presentation/controllers/ai_chat_launcher_preference_controller.dart';
 import 'controllers/account_settings_controller.dart';
 import 'providers/profile_providers.dart';
 
@@ -15,6 +17,8 @@ class AccountSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentProfileProvider);
     final canChangePassword = user?.hasPassword == true;
+    final launcherPreference = ref.watch(aiChatLauncherPreferenceProvider);
+    final showAiLauncher = launcherPreference.asData?.value ?? true;
     final media = MediaQuery.of(context);
     return MysticScaffold(
       extendBodyBehindAppBar: true,
@@ -72,6 +76,20 @@ class AccountSettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           _SettingsSection(
+            title: 'Hiển thị',
+            icon: Icons.visibility_outlined,
+            child: _SettingsSwitchTile(
+              icon: Icons.smart_toy_outlined,
+              title: 'Nút Chat AI nổi',
+              subtitle:
+                  'Hiển thị nút truy cập nhanh Chat AI trên các màn hình.',
+              value: showAiLauncher,
+              enabled: !launcherPreference.isLoading,
+              onChanged: (value) => _setAiLauncherVisible(context, ref, value),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SettingsSection(
             title: 'Khu vực nguy hiểm',
             icon: Icons.delete_outline_rounded,
             danger: true,
@@ -98,27 +116,39 @@ class AccountSettingsPage extends ConsumerWidget {
     builder: (_) => const _ChangePasswordDialog(),
   );
 
-  Future<void> _showDeleteUnavailable(BuildContext context) => showDialog<void>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: const Color(0xFFF3DFB2),
-      icon: const Icon(
+  Future<void> _setAiLauncherVisible(
+    BuildContext context,
+    WidgetRef ref,
+    bool visible,
+  ) async {
+    final saved = await ref
+        .read(aiChatLauncherPreferenceProvider.notifier)
+        .setVisible(visible);
+    if (!saved && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lưu cài đặt hiển thị.')),
+      );
+    }
+  }
+
+  Future<void> _showDeleteUnavailable(
+    BuildContext context,
+  ) => MysticNotificationDialog.show<void>(
+    context,
+    dialog: MysticNotificationDialog(
+      header: 'BẢO MẬT TÀI KHOẢN',
+      title: 'Chưa thể xóa tài khoản',
+      description:
+          'Máy chủ chưa hỗ trợ xóa tài khoản vĩnh viễn. Chức năng này sẽ được kích hoạt sau khi có API xác nhận an toàn.',
+      leading: const Icon(
         Icons.warning_amber_rounded,
         color: Color(0xFF9D332C),
         size: 38,
       ),
-      title: const Text('Chưa thể xóa tài khoản'),
-      content: const Text(
-        'Backend chưa cung cấp API xóa tài khoản. Chức năng này sẽ được '
-        'kích hoạt sau khi máy chủ hỗ trợ xóa vĩnh viễn và xác nhận lại '
-        'mật khẩu.',
-      ),
-      actions: [
-        FilledButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Đã hiểu'),
-        ),
-      ],
+      cancelLabel: 'ĐÓNG',
+      confirmLabel: 'ĐÃ HIỂU',
+      onCancel: () => Navigator.pop(context),
+      onConfirm: () => Navigator.pop(context),
     ),
   );
 }
@@ -347,6 +377,86 @@ class _SettingsTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SettingsSwitchTile extends StatelessWidget {
+  const _SettingsSwitchTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: enabled ? () => onChanged(!value) : null,
+    borderRadius: BorderRadius.circular(14),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 74),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(11, 9, 9, 9),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0x33000000),
+                border: Border.all(color: const Color(0xFFFFD36C)),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: const Color(0xFFFFD36C), size: 23),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFFF7E9CD),
+                      fontFamily: 'serif',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFAAA7A0),
+                      fontSize: 11.5,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch.adaptive(
+              value: value,
+              onChanged: enabled ? onChanged : null,
+              activeTrackColor: const Color(0xFFD7A83F),
+              activeThumbColor: const Color(0xFFFFE4A2),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _DangerNotice extends StatelessWidget {

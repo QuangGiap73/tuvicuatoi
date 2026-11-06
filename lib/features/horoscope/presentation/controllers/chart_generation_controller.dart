@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../wallet/data/wallet_repository.dart';
+import '../../../wallet/presentation/transaction_history_controller.dart';
+import '../../../wallet/presentation/wallet_controller.dart';
 import '../../data/chart_repository.dart';
 import '../../domain/chart_request.dart';
+import 'my_charts_controller.dart';
 import '../state/chart_generation_state.dart';
 
 class ChartGenerationController extends Notifier<ChartGenerationState> {
@@ -94,10 +97,11 @@ class ChartGenerationController extends Notifier<ChartGenerationState> {
     final token = CancelToken();
     _saveToken = token;
     try {
-      final id = await ref
+      final receipt = await ref
           .read(chartRepositoryProvider)
-          .save(request, result, cancelToken: token);
+          .saveWithReceipt(request, result, cancelToken: token);
       if (token.isCancelled) return false;
+      final id = receipt.chartId;
       if (id.trim().isEmpty) {
         throw const ChartException('Máy chủ không trả về mã lá số đã lưu.');
       }
@@ -106,7 +110,22 @@ class ChartGenerationController extends Notifier<ChartGenerationState> {
         request: request,
         result: result,
         savedChartId: id,
+        saveResult: receipt,
       );
+      ref
+          .read(authControllerProvider.notifier)
+          .applyChartSave(
+            coinBalance: receipt.coinBalance,
+            savedChartsCount: receipt.savedChartsCount,
+            maxSavedCharts: receipt.maxSavedCharts,
+          );
+      if (receipt.coinBalance case final balance?) {
+        ref.read(walletControllerProvider.notifier).applyBalance(balance);
+      }
+      if (receipt.usedCoins) {
+        ref.invalidate(transactionHistoryControllerProvider);
+      }
+      ref.invalidate(myChartsControllerProvider);
       try {
         await ref.read(authControllerProvider.notifier).refreshProfile();
       } catch (_) {

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../core/theme/mystic_colors.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../controllers/ai_chat_launcher_preference_controller.dart';
 import '../state/ai_chat_route_activity.dart';
 
 class GlobalAiChatLauncher extends ConsumerStatefulWidget {
@@ -26,6 +27,7 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
   late final AnimationController _pulseController;
   bool _reduceMotion = false;
   bool _authenticated = false;
+  bool _launcherVisible = true;
   Offset? _position;
 
   @override
@@ -48,6 +50,22 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
       },
       fireImmediately: true,
     );
+    ref.listenManual(
+      aiChatLauncherPreferenceProvider.select(
+        (state) => state.asData?.value ?? true,
+      ),
+      (_, visible) {
+        _launcherVisible = visible;
+        if (!visible) {
+          _pulseController
+            ..stop()
+            ..value = 0;
+        } else if (_authenticated && !_reduceMotion) {
+          _startPulse();
+        }
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -55,7 +73,10 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
     super.didChangeDependencies();
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     if (_reduceMotion == reduceMotion) {
-      if (_authenticated && !_reduceMotion && !_pulseController.isAnimating) {
+      if (_authenticated &&
+          _launcherVisible &&
+          !_reduceMotion &&
+          !_pulseController.isAnimating) {
         _startPulse();
       }
       return;
@@ -65,7 +86,7 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
       _pulseController
         ..stop()
         ..value = 0;
-    } else if (_authenticated) {
+    } else if (_authenticated && _launcherVisible) {
       _startPulse();
     }
   }
@@ -73,7 +94,9 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_reduceMotion) return;
-    if (state == AppLifecycleState.resumed && _authenticated) {
+    if (state == AppLifecycleState.resumed &&
+        _authenticated &&
+        _launcherVisible) {
       _startPulse();
     } else {
       _pulseController.stop();
@@ -81,7 +104,10 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
   }
 
   void _startPulse() {
-    if (_reduceMotion || !_authenticated || _pulseController.isAnimating) {
+    if (_reduceMotion ||
+        !_authenticated ||
+        !_launcherVisible ||
+        _pulseController.isAnimating) {
       return;
     }
     // A short attention cue is enough. Keeping the blurred CustomPainter at
@@ -102,6 +128,11 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
   Widget build(BuildContext context) {
     final isAuthenticated = ref.watch(
       authControllerProvider.select((state) => state.asData?.value != null),
+    );
+    final launcherVisible = ref.watch(
+      aiChatLauncherPreferenceProvider.select(
+        (state) => state.asData?.value ?? true,
+      ),
     );
     final media = MediaQuery.of(context);
     final keyboardOpen = media.viewInsets.bottom > 0;
@@ -148,7 +179,8 @@ class _GlobalAiChatLauncherState extends ConsumerState<GlobalAiChatLauncher>
               fit: StackFit.expand,
               children: [
                 widget.child,
-                if (isAuthenticated &&
+                if (launcherVisible &&
+                    isAuthenticated &&
                     !keyboardOpen &&
                     !hideOnAiChat &&
                     !hideOnPalaceDetail)

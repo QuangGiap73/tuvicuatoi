@@ -7,6 +7,7 @@ import '../../../core/assets/mystic_assets.dart';
 import '../../../core/theme/mystic_colors.dart';
 import '../../../core/theme/mystic_spacing.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
+import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../auth/presentation/login_required_dialog.dart';
 import '../../../app/router/auth_route_policy.dart';
@@ -151,36 +152,22 @@ class HomePage extends ConsumerWidget {
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF0B1928),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: Color(0xFFD2A33E)),
+    final confirmed = await MysticNotificationDialog.show<bool>(
+      context,
+      dialog: MysticNotificationDialog(
+        header: 'TÀI KHOẢN',
+        title: 'Đăng xuất tài khoản?',
+        description:
+            'Bạn vẫn có thể đăng nhập lại để tiếp tục sử dụng dữ liệu đã đồng bộ.',
+        leading: const Icon(
+          Icons.logout_rounded,
+          color: Color(0xFFA13A2C),
+          size: 38,
         ),
-        title: const Text(
-          'Đăng xuất tài khoản?',
-          style: TextStyle(color: Color(0xFFFFE4A4)),
-        ),
-        content: const Text(
-          'Bạn vẫn có thể đăng nhập lại để tiếp tục sử dụng dữ liệu đã đồng bộ.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('HỦY'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFD3A036),
-              foregroundColor: const Color(0xFF241704),
-            ),
-            child: const Text('ĐĂNG XUẤT'),
-          ),
-        ],
+        cancelLabel: 'HỦY',
+        confirmLabel: 'ĐĂNG XUẤT',
+        onCancel: () => Navigator.pop(context, false),
+        onConfirm: () => Navigator.pop(context, true),
       ),
     );
     if (confirmed == true) {

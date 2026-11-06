@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/chart_repository.dart';
 import '../state/my_charts_state.dart';
 
@@ -9,8 +10,11 @@ class MyChartsController extends Notifier<MyChartsState> {
 
   @override
   MyChartsState build() {
+    final userId = ref.watch(authSessionUserIdProvider);
     ref.onDispose(() => _loadCancelToken?.cancel());
-    Future.microtask(load);
+    if (userId != null && userId.isNotEmpty) {
+      Future.microtask(load);
+    }
     return const MyChartsState(isLoading: true);
   }
 
@@ -22,7 +26,7 @@ class MyChartsController extends Notifier<MyChartsState> {
     try {
       final charts = await ref
           .read(chartRepositoryProvider)
-          .getMyCharts(cancelToken: cancelToken);
+          .getMyCharts(cancelToken: cancelToken, retainChartData: false);
       if (cancelToken.isCancelled) return;
       state = MyChartsState(charts: List.unmodifiable(charts));
     } on ChartException catch (error) {
@@ -56,3 +60,6 @@ class MyChartsController extends Notifier<MyChartsState> {
     }
   }
 }
+
+final myChartsControllerProvider =
+    NotifierProvider<MyChartsController, MyChartsState>(MyChartsController.new);

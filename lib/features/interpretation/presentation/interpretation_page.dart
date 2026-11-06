@@ -8,6 +8,7 @@ import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../ai_chat/presentation/widgets/chart_picker_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../auth/presentation/require_authentication.dart';
+import '../../horoscope/presentation/chart_save_guard.dart';
 import '../domain/generated_overview_section_mapper.dart';
 import '../domain/interpretation_models.dart';
 import '../domain/interpretation_section_content_resolver.dart';
@@ -261,6 +262,9 @@ class InterpretationPage extends ConsumerWidget {
     )) {
       return;
     }
+    if (!await confirmChartSaveIfNeeded(context, ref) || !context.mounted) {
+      return;
+    }
     final success = await ref
         .read(interpretationControllerProvider.notifier)
         .saveCurrentChart();
@@ -313,24 +317,22 @@ class InterpretationPage extends ConsumerWidget {
     }
     final state = ref.read(interpretationControllerProvider);
     if (state.context?.isSaved != true) {
-      final shouldSave = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFFF6E5BD),
-          title: const Text('Cần lưu lá số'),
-          content: const Text(
-            'Backend yêu cầu mã lá số đã lưu để mở khóa nội dung. Bạn có muốn lưu lá số này trước không?',
+      final shouldSave = await MysticNotificationDialog.show<bool>(
+        context,
+        dialog: MysticNotificationDialog(
+          header: 'MỞ KHÓA LUẬN GIẢI',
+          title: 'Cần lưu lá số',
+          description:
+              'Lá số cần được lưu vào tài khoản trước khi mở khóa nội dung luận giải.',
+          leading: const Icon(
+            Icons.bookmark_add_outlined,
+            color: Color(0xFF9A6512),
+            size: 38,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Để sau'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Lưu lá số'),
-            ),
-          ],
+          cancelLabel: 'ĐỂ SAU',
+          confirmLabel: 'LƯU LÁ SỐ',
+          onCancel: () => Navigator.pop(context, false),
+          onConfirm: () => Navigator.pop(context, true),
         ),
       );
       if (shouldSave == true && context.mounted) await _save(context, ref);

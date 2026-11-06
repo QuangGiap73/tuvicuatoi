@@ -33,7 +33,7 @@ class SavedChartCard extends StatelessWidget {
               MysticAssets.myChartCardFrame,
               fit: BoxFit.fill,
               cacheWidth: cacheWidth,
-              filterQuality: FilterQuality.medium,
+              filterQuality: FilterQuality.low,
             ),
           ),
           Padding(
@@ -265,7 +265,9 @@ class _CardAction extends StatelessWidget {
               MysticAssets.upgradeFrameB,
               fit: BoxFit.fill,
               cacheWidth: cacheWidth,
-              filterQuality: FilterQuality.medium,
+              cacheHeight: (43 * MediaQuery.devicePixelRatioOf(context))
+                  .round(),
+              filterQuality: FilterQuality.low,
             ),
             TextButton(
               onPressed: onPressed,

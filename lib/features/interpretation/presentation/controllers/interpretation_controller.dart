@@ -9,6 +9,8 @@ import '../../../horoscope/domain/chart_request.dart';
 import '../../../horoscope/domain/chart_result.dart';
 import '../../../horoscope/domain/saved_chart.dart';
 import '../../../horoscope/presentation/providers/chart_form_providers.dart';
+import '../../../wallet/presentation/transaction_history_controller.dart';
+import '../../../wallet/presentation/wallet_controller.dart';
 import '../../application/chart_session_service.dart';
 import '../../application/interpretation_content_service.dart';
 import '../../application/reading_catalog_service.dart';
@@ -569,7 +571,10 @@ class InterpretationController extends Notifier<InterpretationState> {
     if (state.isSavingChart) return false;
     state = state.copyWith(isSavingChart: true, clearChartError: true);
     try {
-      final id = await ref.read(chartRepositoryProvider).save(request, result);
+      final receipt = await ref
+          .read(chartRepositoryProvider)
+          .saveWithReceipt(request, result);
+      final id = receipt.chartId;
       if (id.trim().isEmpty) {
         throw const ChartException('Máy chủ không trả về mã lá số đã lưu.');
       }
@@ -609,6 +614,22 @@ class InterpretationController extends Notifier<InterpretationState> {
         isSavingChart: false,
       );
       ref.read(chartGenerationControllerProvider.notifier).markSaved(id);
+      ref.invalidate(myChartsControllerProvider);
+      ref
+          .read(authControllerProvider.notifier)
+          .applyChartSave(
+            coinBalance: receipt.coinBalance,
+            savedChartsCount: receipt.savedChartsCount,
+            maxSavedCharts: receipt.maxSavedCharts,
+          );
+      if (receipt.coinBalance != null) {
+        ref
+            .read(walletControllerProvider.notifier)
+            .applyBalance(receipt.coinBalance!);
+      }
+      if (receipt.usedCoins) {
+        ref.invalidate(transactionHistoryControllerProvider);
+      }
       try {
         await ref.read(authControllerProvider.notifier).refreshProfile();
       } catch (_) {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../ai_chat/presentation/controllers/ai_chat_controller.dart';
 import '../../auth/domain/auth_user.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
@@ -40,7 +41,15 @@ class MyChartsPage extends ConsumerWidget {
           SafeArea(
             child: Consumer(
               builder: (context, ref, _) {
-                final state = ref.watch(myChartsControllerProvider);
+                final view = ref.watch(
+                  myChartsControllerProvider.select(
+                    (state) => (
+                      charts: state.charts,
+                      loading: state.isLoading,
+                      error: state.errorMessage,
+                    ),
+                  ),
+                );
                 return RefreshIndicator(
                   color: const Color(0xFFD9AE5F),
                   backgroundColor: const Color(0xFF071827),
@@ -62,31 +71,30 @@ class MyChartsPage extends ConsumerWidget {
                         sliver: SliverToBoxAdapter(
                           child: _ChartVaultSummary(
                             user: user,
-                            loadedCount: state.charts.length,
+                            loadedCount: view.charts.length,
                             onCreate: () => context.push(AppRoute.horoscope),
                             onUpgrade: () => context.push(AppRoute.wallet),
                           ),
                         ),
                       ),
-                      if (state.isLoading && state.charts.isEmpty)
+                      if (view.loading && view.charts.isEmpty)
                         const SliverPadding(
                           padding: EdgeInsets.fromLTRB(16, 0, 16, 112),
                           sliver: SliverToBoxAdapter(child: _LoadingState()),
                         )
-                      else if (state.errorMessage != null &&
-                          state.charts.isEmpty)
+                      else if (view.error != null && view.charts.isEmpty)
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
                           sliver: SliverToBoxAdapter(
                             child: _ErrorState(
-                              message: state.errorMessage!,
+                              message: view.error!,
                               onRetry: () => ref
                                   .read(myChartsControllerProvider.notifier)
                                   .load(),
                             ),
                           ),
                         )
-                      else if (state.charts.isEmpty)
+                      else if (view.charts.isEmpty)
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
                           sliver: SliverToBoxAdapter(
@@ -99,35 +107,49 @@ class MyChartsPage extends ConsumerWidget {
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
                           sliver: SliverList.builder(
-                            itemCount: state.charts.length,
+                            itemCount: view.charts.length,
                             itemBuilder: (context, index) {
-                              final chart = state.charts[index];
+                              final chart = view.charts[index];
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 13),
                                 child: RepaintBoundary(
-                                  child: SavedChartCard(
-                                    key: ValueKey(chart.id),
-                                    chart: chart,
-                                    isDeleting: state.deletingId == chart.id,
-                                    onInterpret: () {
-                                      ref
-                                          .read(
-                                            interpretationControllerProvider
-                                                .notifier,
-                                          )
-                                          .openSaved(chart);
-                                      context.push(AppRoute.interpretation);
+                                  child: Consumer(
+                                    builder: (context, ref, _) {
+                                      final isDeleting = ref.watch(
+                                        myChartsControllerProvider.select(
+                                          (state) =>
+                                              state.deletingId == chart.id,
+                                        ),
+                                      );
+                                      return SavedChartCard(
+                                        key: ValueKey(chart.id),
+                                        chart: chart,
+                                        isDeleting: isDeleting,
+                                        onInterpret: () {
+                                          ref
+                                              .read(
+                                                interpretationControllerProvider
+                                                    .notifier,
+                                              )
+                                              .openSaved(chart);
+                                          context.push(AppRoute.interpretation);
+                                        },
+                                        onAskAi: () {
+                                          ref
+                                              .read(
+                                                aiChatControllerProvider
+                                                    .notifier,
+                                              )
+                                              .selectChart(chart);
+                                          context.push(AppRoute.chat);
+                                        },
+                                        onDelete: () => _confirmDelete(
+                                          context,
+                                          ref,
+                                          chart.id,
+                                        ),
+                                      );
                                     },
-                                    onAskAi: () {
-                                      ref
-                                          .read(
-                                            aiChatControllerProvider.notifier,
-                                          )
-                                          .selectChart(chart);
-                                      context.push(AppRoute.chat);
-                                    },
-                                    onDelete: () =>
-                                        _confirmDelete(context, ref, chart.id),
                                   ),
                                 ),
                               );
@@ -150,25 +172,21 @@ class MyChartsPage extends ConsumerWidget {
     WidgetRef ref,
     String id,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFF6E5BD),
-        title: const Text('Xóa lá số?'),
-        content: const Text('Lá số đã xóa sẽ không thể khôi phục.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFA82232),
-            ),
-            child: const Text('Xóa'),
-          ),
-        ],
+    final confirmed = await MysticNotificationDialog.show<bool>(
+      context,
+      dialog: MysticNotificationDialog(
+        header: 'KHO LÁ SỐ',
+        title: 'Xóa lá số?',
+        description: 'Lá số đã xóa sẽ không thể khôi phục.',
+        leading: const Icon(
+          Icons.delete_forever_outlined,
+          color: Color(0xFFA13A2C),
+          size: 38,
+        ),
+        cancelLabel: 'HỦY',
+        confirmLabel: 'XÓA LÁ SỐ',
+        onCancel: () => Navigator.pop(context, false),
+        onConfirm: () => Navigator.pop(context, true),
       ),
     );
     if (confirmed != true || !context.mounted) return;
@@ -394,7 +412,9 @@ class _ChartVaultSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = loadedCount;
-    final max = user?.maxSavedCharts ?? (user?.isPremium == true ? 999 : 1);
+    final max = user?.hasUnlimitedSavedCharts == true
+        ? 999
+        : user?.maxSavedCharts ?? (user?.isPremium == true ? 999 : 2);
     final cacheWidth =
         (MediaQuery.sizeOf(context).width *
                 MediaQuery.devicePixelRatioOf(context))
@@ -490,8 +510,11 @@ class _ChartVaultSummary extends StatelessWidget {
                       Image.asset(
                         MysticAssets.upgradeFrameB,
                         fit: BoxFit.fill,
-                        cacheWidth: cacheWidth,
-                        filterQuality: FilterQuality.medium,
+                        cacheWidth: (cacheWidth * .9).round(),
+                        cacheHeight:
+                            (44 * MediaQuery.devicePixelRatioOf(context))
+                                .round(),
+                        filterQuality: FilterQuality.low,
                       ),
                       TextButton(
                         onPressed: user?.isPremium == true

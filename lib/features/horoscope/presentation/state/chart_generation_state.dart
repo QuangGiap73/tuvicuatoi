@@ -1,5 +1,6 @@
 import '../../domain/chart_request.dart';
 import '../../domain/chart_result.dart';
+import '../../domain/chart_save_result.dart';
 
 enum ChartGenerationStatus { idle, generating, ready, saving, saved, error }
 
@@ -9,6 +10,7 @@ class ChartGenerationState {
     this.request,
     this.result,
     this.savedChartId,
+    this.saveResult,
     this.errorMessage,
   });
 
@@ -16,6 +18,7 @@ class ChartGenerationState {
   final ChartRequest? request;
   final ChartResult? result;
   final String? savedChartId;
+  final ChartSaveResult? saveResult;
   final String? errorMessage;
 
   bool get isGenerating => status == ChartGenerationStatus.generating;

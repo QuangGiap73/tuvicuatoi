@@ -111,6 +111,25 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     );
   }
 
+  void applyChartSave({
+    int? coinBalance,
+    int? savedChartsCount,
+    int? maxSavedCharts,
+  }) {
+    final session = state.asData?.value;
+    if (session == null) return;
+    state = AsyncData(
+      AuthSession(
+        token: session.token,
+        user: session.user.withChartSave(
+          coinBalance: coinBalance,
+          savedChartsCount: savedChartsCount,
+          maxSavedCharts: maxSavedCharts,
+        ),
+      ),
+    );
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     try {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/mystic_notification_dialog.dart';
 import '../../domain/ai_chat_message.dart';
 import '../controllers/ai_chat_controller.dart';
 
@@ -154,28 +155,22 @@ class _ChatHistorySheet extends ConsumerWidget {
   }
 
   Future<void> _confirmClear(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFFF8EACB),
-        title: const Text('Xóa lịch sử trò chuyện?'),
-        content: const Text(
-          'Toàn bộ cuộc trò chuyện của lá số đang chọn sẽ bị xóa. '
-          'Thao tác này không thể hoàn tác.',
+    final confirmed = await MysticNotificationDialog.show<bool>(
+      context,
+      dialog: MysticNotificationDialog(
+        header: 'LỊCH SỬ TRÒ CHUYỆN',
+        title: 'Xóa lịch sử?',
+        description:
+            'Toàn bộ cuộc trò chuyện của lá số đang chọn sẽ bị xóa và không thể hoàn tác.',
+        leading: const Icon(
+          Icons.delete_forever_outlined,
+          color: Color(0xFFA13A2C),
+          size: 38,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('HỦY'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF8D2634),
-            ),
-            child: const Text('XÓA'),
-          ),
-        ],
+        cancelLabel: 'HỦY',
+        confirmLabel: 'XÓA LỊCH SỬ',
+        onCancel: () => Navigator.pop(context, false),
+        onConfirm: () => Navigator.pop(context, true),
       ),
     );
     if (confirmed != true || !context.mounted) return;

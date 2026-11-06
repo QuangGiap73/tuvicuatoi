@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../horoscope/domain/saved_chart.dart';
 import '../../wallet/presentation/providers/top_up_providers.dart';
@@ -77,90 +78,54 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
     _scrollToBottom();
   }
 
-  Future<bool?> _confirmPaidQuestion(int balance, int cost) => showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: const Color(0xFF0B1928),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFD4A43D)),
-      ),
-      icon: const Icon(
+  Future<bool?> _confirmPaidQuestion(
+    int balance,
+    int cost,
+  ) => MysticNotificationDialog.show<bool>(
+    context,
+    dialog: MysticNotificationDialog(
+      header: 'HỎI TỬ VI AI',
+      title: 'Sử dụng $cost Xu?',
+      description:
+          'Bạn đã hết lượt hỏi miễn phí hôm nay. Câu hỏi này sẽ sử dụng Xu.',
+      leading: const Icon(
         Icons.monetization_on_rounded,
-        color: Color(0xFFFFCF55),
+        color: Color(0xFF9A6512),
         size: 38,
       ),
-      title: Text(
-        'Sử dụng $cost Xu?',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Color(0xFFFFE4A4)),
-      ),
-      content: Text(
-        'Bạn đã hết lượt hỏi miễn phí hôm nay. Câu hỏi này dự kiến sử dụng $cost Xu.\n\nSố dư hiện tại: $balance Xu',
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white70),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('HỦY'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFFD6A12F),
-            foregroundColor: const Color(0xFF281A04),
-          ),
-          child: const Text('GỬI CÂU HỎI'),
-        ),
-      ],
+      priceLabel: 'Chi phí câu hỏi',
+      priceText: '$cost Xu',
+      priceNote: 'Số dư hiện tại: $balance Xu',
+      cancelLabel: 'HỦY',
+      confirmLabel: 'GỬI CÂU HỎI',
+      onCancel: () => Navigator.pop(context, false),
+      onConfirm: () => Navigator.pop(context, true),
     ),
   );
 
   Future<void> _showInsufficientCoinsDialog(
     AiChatFailureDetails failure,
   ) async {
-    final action = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF0B1928),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: Color(0xFFD4A43D)),
-        ),
-        icon: const Icon(
+    final action = await MysticNotificationDialog.show<String>(
+      context,
+      dialog: MysticNotificationDialog(
+        header: 'KHÔNG ĐỦ XU',
+        title: 'Không thể gửi câu hỏi',
+        description: failure.message,
+        leading: const Icon(
           Icons.account_balance_wallet_outlined,
-          color: Color(0xFFFFCF55),
+          color: Color(0xFFA13A2C),
           size: 38,
         ),
-        title: const Text(
-          'Không đủ Xu',
-          style: TextStyle(color: Color(0xFFFFE4A4)),
+        extraContent: OutlinedButton.icon(
+          onPressed: () => Navigator.pop(context, 'premium'),
+          icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+          label: const Text('XEM GÓI HỘI VIÊN'),
         ),
-        content: Text(
-          failure.message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('ĐỂ SAU'),
-          ),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(dialogContext, 'premium'),
-            child: const Text('NÂNG CẤP'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, 'topup'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFD6A12F),
-              foregroundColor: const Color(0xFF281A04),
-            ),
-            child: const Text('NẠP XU'),
-          ),
-        ],
+        cancelLabel: 'ĐỂ SAU',
+        confirmLabel: 'NẠP XU',
+        onCancel: () => Navigator.pop(context),
+        onConfirm: () => Navigator.pop(context, 'topup'),
       ),
     );
     if (!mounted) return;
