@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../ai_chat/presentation/widgets/chart_picker_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
@@ -912,18 +913,13 @@ class _Header extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 color: const Color(0xFFFFD978),
               ),
-              const Expanded(
+              Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     'Luận giải lá số',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFFFE0A0),
-                      fontFamily: 'serif',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: MysticTypography.pageTitle(fontSize: 23),
                   ),
                 ),
               ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_frame_button.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import 'providers/article_providers.dart';
@@ -237,7 +238,7 @@ class _Header extends StatelessWidget {
               size: 29,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -247,12 +248,7 @@ class _Header extends StatelessWidget {
                     'Tin Tức & Cẩm Nang',
                     maxLines: 1,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFFFE4A0),
-                      fontFamily: 'serif',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: MysticTypography.pageTitle(fontSize: 23),
                   ),
                 ),
                 SizedBox(height: 2),

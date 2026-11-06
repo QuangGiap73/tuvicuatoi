@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/mystic_colors.dart';
+import '../theme/mystic_typography.dart';
 
 class MysticAppBar extends StatelessWidget implements PreferredSizeWidget {
   const MysticAppBar({
@@ -15,7 +16,10 @@ class MysticAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight + 1);
   @override
   Widget build(BuildContext context) => AppBar(
-    title: Text(title),
+    title: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(title, maxLines: 1, style: MysticTypography.pageTitle()),
+    ),
     leading: leading,
     actions: actions,
     centerTitle: true,

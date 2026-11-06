@@ -153,15 +153,23 @@ class _DateCenter extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
-      Text(
-        '${_two(date.day)}/${_two(date.month)}/${date.year}',
-        maxLines: 1,
-        style: const TextStyle(
-          color: Color(0xFF251305),
-          fontFamily: 'serif',
-          fontSize: 23,
-          height: 1.05,
-          fontWeight: FontWeight.w900,
+      SizedBox(
+        width: double.infinity,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Text(
+            '${_two(date.day)}/${_two(date.month)}/${date.year}',
+            maxLines: 1,
+            softWrap: false,
+            style: const TextStyle(
+              color: Color(0xFF251305),
+              fontFamily: 'serif',
+              fontSize: 23,
+              height: 1.05,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
       const SizedBox(height: 2),

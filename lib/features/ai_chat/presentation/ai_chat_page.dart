@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../horoscope/domain/saved_chart.dart';
@@ -479,7 +480,7 @@ class _ChatHeader extends StatelessWidget {
     child: Row(
       children: [
         _RoundButton(icon: Icons.arrow_back_rounded, onPressed: onBack),
-        const Expanded(
+        Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -490,21 +491,7 @@ class _ChatHeader extends StatelessWidget {
                   SizedBox(width: 4),
                   Text(
                     'AI Tử Vi',
-                    style: TextStyle(
-                      color: Color(0xFFFFDF94),
-                      fontFamily: 'serif',
-                      fontSize: 21,
-                      height: 1.1,
-                      fontWeight: FontWeight.w800,
-                      fontStyle: FontStyle.italic,
-                      shadows: [
-                        Shadow(
-                          color: Color(0x99DDA746),
-                          blurRadius: 8,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
+                    style: MysticTypography.pageTitle(fontSize: 23),
                   ),
                 ],
               ),

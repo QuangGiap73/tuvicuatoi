@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import '../domain/wallet_models.dart';
 import 'transaction_history_controller.dart';
@@ -156,7 +157,7 @@ class _HistoryHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Column(
             children: [
               SizedBox(
@@ -167,12 +168,7 @@ class _HistoryHeader extends StatelessWidget {
                     'Nhật Ký Biến Động Xu',
                     maxLines: 1,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFFFE39A),
-                      fontFamily: 'serif',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: MysticTypography.pageTitle(fontSize: 23),
                   ),
                 ),
               ),

@@ -143,7 +143,10 @@ class _FortuneHero extends StatelessWidget {
                 ),
               ),
               Positioned(
-                right: width * .04,
+                // The artwork's right panel spans roughly 57%..91% of the
+                // frame. Center the copy on that visual panel, not on the
+                // remaining half of the whole image.
+                right: width * .09,
                 width: width * .34,
                 top: height * .23,
                 height: height * .55,

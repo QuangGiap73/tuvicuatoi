@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../ai_chat/presentation/controllers/ai_chat_controller.dart';
 import '../../auth/domain/auth_user.dart';
@@ -269,19 +270,11 @@ class _MyChartsHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 5),
-          const FittedBox(
+          FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               'LÁ SỐ CỦA TÔI',
-              style: TextStyle(
-                color: Color(0xFFFFD368),
-                fontFamily: 'serif',
-                fontSize: 27,
-                height: 1.05,
-                fontWeight: FontWeight.w800,
-                letterSpacing: .7,
-                shadows: [Shadow(color: Color(0xAA9B5D00), blurRadius: 12)],
-              ),
+              style: MysticTypography.pageTitle(fontSize: 27),
             ),
           ),
           const SizedBox(height: 6),

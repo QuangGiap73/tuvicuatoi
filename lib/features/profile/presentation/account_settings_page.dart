@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_notification_dialog.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import '../../ai_chat/presentation/controllers/ai_chat_launcher_preference_controller.dart';
@@ -178,14 +179,9 @@ class _SettingsAppBar extends StatelessWidget implements PreferredSizeWidget {
         size: 22,
       ),
     ),
-    title: const Text(
+    title: Text(
       'Cài đặt tài khoản',
-      style: TextStyle(
-        color: Color(0xFFFFD98A),
-        fontFamily: 'serif',
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-      ),
+      style: MysticTypography.pageTitle(fontSize: 23),
     ),
     bottom: const PreferredSize(
       preferredSize: Size.fromHeight(1),

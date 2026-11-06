@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/mystic_colors.dart';
+import '../../../../core/theme/mystic_typography.dart';
 
 class ProfileMysticAppBar extends StatelessWidget
     implements PreferredSizeWidget {
@@ -40,16 +41,7 @@ class ProfileMysticAppBar extends StatelessWidget
         color: MysticColors.appBarGold,
       ),
     ),
-    title: const Text(
-      'Cá nhân',
-      style: TextStyle(
-        color: MysticColors.appBarTitle,
-        fontFamily: 'serif',
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        letterSpacing: .1,
-      ),
-    ),
+    title: Text('Cá nhân', style: MysticTypography.pageTitle(fontSize: 23)),
     actions: [
       IconButton(
         tooltip: 'Cài đặt',

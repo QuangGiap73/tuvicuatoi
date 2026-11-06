@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/theme/mystic_spacing.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import 'controllers/daily_fortune_controller.dart';
@@ -41,7 +42,7 @@ class DailyFortunePage extends ConsumerWidget {
         ),
       ),
       body: const CustomScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
+        physics: BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           SliverToBoxAdapter(child: _DailyFortuneHeaderConnector()),
           _DailyFortuneContent(),
@@ -334,20 +335,8 @@ class _DailyFortuneHeader extends StatelessWidget {
                             child: Text(
                               'Vận Hạn Hôm Nay',
                               maxLines: 1,
-                              style: TextStyle(
-                                color: const Color(0xFFFFD978),
-                                fontFamily: 'serif',
+                              style: MysticTypography.pageTitle(
                                 fontSize: narrow ? 23 : 27,
-                                height: 1.1,
-                                fontWeight: FontWeight.w900,
-                                fontStyle: FontStyle.italic,
-                                shadows: const [
-                                  Shadow(
-                                    color: Color(0xCC3B2108),
-                                    blurRadius: 3,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
                               ),
                             ),
                           ),

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import '../domain/wallet_models.dart';
 import 'wallet_controller.dart';
@@ -122,7 +123,7 @@ class _Header extends StatelessWidget {
                   : null,
             ),
           ),
-          const Positioned.fill(
+          Positioned.fill(
             left: 52,
             right: 68,
             child: Column(
@@ -134,13 +135,7 @@ class _Header extends StatelessWidget {
                     'Ví Xu & Phúc Lộc',
                     maxLines: 1,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFFFE291),
-                      fontFamily: 'serif',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                    ),
+                    style: MysticTypography.pageTitle(fontSize: 23),
                   ),
                 ),
                 SizedBox(height: 2),

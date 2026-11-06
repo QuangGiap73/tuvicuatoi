@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../ai_chat/presentation/controllers/ai_chat_controller.dart';
 import '../../horoscope/presentation/providers/chart_form_providers.dart';
 import '../../interpretation/domain/interpretation_models.dart';
@@ -245,21 +246,15 @@ class _PalaceDetailAppBar extends StatelessWidget {
     child: Stack(
       alignment: Alignment.center,
       children: [
-        const Column(
+        Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               'Chi tiết cung',
-              style: TextStyle(
-                color: Color(0xFFFFE1A0),
-                fontFamily: 'serif',
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
-                shadows: [Shadow(color: Colors.black, blurRadius: 5)],
-              ),
+              style: MysticTypography.pageTitle(fontSize: 25),
             ),
-            SizedBox(height: 4),
-            Row(
+            const SizedBox(height: 4),
+            const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(

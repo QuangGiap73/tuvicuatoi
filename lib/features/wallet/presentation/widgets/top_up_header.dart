@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/mystic_typography.dart';
+
 const _gold = Color(0xFFE5BA50);
 
 class TopUpHeader extends StatelessWidget {
@@ -26,18 +28,13 @@ class TopUpHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 'Nạp Xu & Gói Hội Viên',
                 maxLines: 1,
-                style: TextStyle(
-                  color: Color(0xFFFFE39A),
-                  fontFamily: 'serif',
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: MysticTypography.pageTitle(fontSize: 25),
               ),
             ),
           ),

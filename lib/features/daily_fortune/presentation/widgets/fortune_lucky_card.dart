@@ -34,7 +34,7 @@ class FortuneLuckyCard extends StatelessWidget {
               const _Title(),
               Container(
                 width: 1,
-                height: 48,
+                height: 58,
                 margin: const EdgeInsets.symmetric(horizontal: 9),
                 color: const Color(0x55A56B20),
               ),
@@ -43,16 +43,6 @@ class FortuneLuckyCard extends StatelessWidget {
                   icon: Icons.palette_rounded,
                   label: 'Màu may mắn',
                   value: fortune.luckyColor,
-                  green: true,
-                ),
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: _LuckyValue(
-                  icon: Icons.navigation_rounded,
-                  label: 'Hướng may mắn',
-                  value: fortune.luckyDirection,
-                  green: false,
                 ),
               ),
             ],
@@ -137,32 +127,24 @@ class _LuckyValue extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    required this.green,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final bool green;
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 48,
-    padding: const EdgeInsets.symmetric(horizontal: 7),
+    height: 58,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
-      color: green ? const Color(0xFFDDF0D7) : const Color(0xFFFFEBC2),
-      border: Border.all(
-        color: green ? const Color(0xFF84A779) : const Color(0xFFD3A14C),
-      ),
+      color: const Color(0xFFDDF0D7),
+      border: Border.all(color: const Color(0xFF84A779)),
       borderRadius: BorderRadius.circular(10),
     ),
     child: Row(
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: green ? const Color(0xFF3D7759) : const Color(0xFF99651D),
-        ),
+        Icon(icon, size: 20, color: const Color(0xFF3D7759)),
         const SizedBox(width: 5),
         Expanded(
           child: Column(
@@ -173,17 +155,18 @@ class _LuckyValue extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF716044), fontSize: 7.5),
+                style: const TextStyle(color: Color(0xFF716044), fontSize: 8.5),
               ),
               const SizedBox(height: 1),
               Text(
                 value.trim().isEmpty ? '—' : value,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'serif',
                   color: Color(0xFF30210F),
-                  fontSize: 10.5,
+                  fontSize: 12.5,
+                  height: 1.05,
                   fontWeight: FontWeight.w900,
                 ),
               ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import 'providers/chart_form_providers.dart';
 import 'widgets/chart_birth_form_card.dart';
@@ -37,17 +38,10 @@ class HoroscopePage extends ConsumerWidget {
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.fromLTRB(14, 7, 14, 92),
         children: [
-          const Text(
+          Text(
             'Lập Lá Số Tử Vi',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFFFFE8B4),
-              fontFamily: 'serif',
-              fontSize: 28,
-              height: 1.02,
-              fontWeight: FontWeight.w700,
-              shadows: [Shadow(color: Colors.black, blurRadius: 5)],
-            ),
+            style: MysticTypography.pageTitle(fontSize: 27),
           ),
           const SizedBox(height: 5),
           const Padding(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/assets/mystic_assets.dart';
+import '../../../core/theme/mystic_typography.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import '../domain/wallet_models.dart';
 import 'providers/payment_order_providers.dart';
@@ -64,21 +65,24 @@ class _PaymentOrdersPageState extends ConsumerState<PaymentOrdersPage> {
                           color: Color(0xFFFFD66B),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           children: [
-                            Text(
-                              'Lịch Sử Đơn Thanh Toán',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFFFFE5A4),
-                                fontFamily: 'serif',
-                                fontSize: 21,
-                                fontWeight: FontWeight.w900,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Lịch Sử Đơn Thanh Toán',
+                                maxLines: 1,
+                                softWrap: false,
+                                textAlign: TextAlign.center,
+                                style: MysticTypography.pageTitle(fontSize: 22),
                               ),
                             ),
                             Text(
                               'Đơn mua Xu và gói Hội viên',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white60,
                                 fontSize: 10,
