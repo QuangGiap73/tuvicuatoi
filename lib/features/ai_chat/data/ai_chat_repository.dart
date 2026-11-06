@@ -7,8 +7,14 @@ import '../../../core/network/dio_provider.dart';
 import '../domain/ai_chat_message.dart';
 
 class AiChatException implements Exception {
-  const AiChatException(this.message);
-  final String message;
+  const AiChatException(this.details);
+  AiChatException.message(String message)
+    : details = AiChatFailureDetails(message: message);
+
+  final AiChatFailureDetails details;
+  String get message => details.message;
+  bool get isInsufficientCoins => details.isInsufficientCoins;
+
   @override
   String toString() => message;
 }
@@ -24,12 +30,21 @@ Stream<AiChatStreamEvent> parseAiChatSse(Stream<List<int>> byteStream) async* {
     if (decoded is! Map) continue;
     if (decoded['delta'] != null) {
       yield AiChatDelta(decoded['delta'].toString());
-    } else if (decoded['done'] == true) {
+    } else if (decoded['done'] == true ||
+        (decoded['success'] == true && decoded['reply'] != null)) {
+      final usage = AiChatUsageUpdate.fromJson(decoded);
+      final nested = decoded['data'];
       yield AiChatDone(
-        (decoded['fullText'] ?? decoded['full_text'] ?? '').toString(),
+        (decoded['fullText'] ??
+                decoded['full_text'] ??
+                decoded['reply'] ??
+                (nested is Map ? nested['reply'] : null) ??
+                '')
+            .toString(),
+        usage: usage.hasData ? usage : null,
       );
-    } else if (decoded['error'] != null) {
-      yield AiChatStreamError(decoded['error'].toString());
+    } else if (decoded['error'] != null || decoded['success'] == false) {
+      yield AiChatStreamError(AiChatFailureDetails.fromJson(decoded));
     }
   }
 }
@@ -51,7 +66,7 @@ class AiChatRepository {
       );
       final body = response.data;
       if (body is! Map || body['success'] == false) {
-        throw const AiChatException('Không thể tải lịch sử trò chuyện.');
+        throw AiChatException.message('Không thể tải lịch sử trò chuyện.');
       }
       final data = body['data'];
       final rawMessages =
@@ -74,7 +89,7 @@ class AiChatRepository {
       return List.unmodifiable(messages);
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) rethrow;
-      throw AiChatException(_messageFrom(error));
+      throw AiChatException.message(_messageFrom(error));
     }
   }
 
@@ -86,7 +101,7 @@ class AiChatRepository {
       );
       final body = response.data;
       if (body is! Map || body['success'] != true) {
-        throw AiChatException(
+        throw AiChatException.message(
           body is Map && (body['message'] ?? body['error']) != null
               ? (body['message'] ?? body['error']).toString()
               : 'Không thể xóa lịch sử trò chuyện.',
@@ -94,7 +109,7 @@ class AiChatRepository {
       }
       return (body['deletedCount'] as num?)?.toInt() ?? 0;
     } on DioException catch (error) {
-      throw AiChatException(_messageFrom(error));
+      throw AiChatException.message(_messageFrom(error));
     }
   }
 
@@ -103,8 +118,6 @@ class AiChatRepository {
     required String chartId,
     required Map<String, dynamic> chartData,
     required String focusPalace,
-    required bool isPremium,
-    required String userEmail,
     CancelToken? cancelToken,
   }) async* {
     try {
@@ -115,8 +128,6 @@ class AiChatRepository {
           'chartId': chartId,
           'chartData': chartData,
           'focusPalace': focusPalace,
-          'isPremium': isPremium,
-          'userEmail': userEmail,
           'stream': true,
         },
         options: Options(
@@ -128,7 +139,7 @@ class AiChatRepository {
       );
       final body = response.data;
       if (body == null) {
-        throw const AiChatException('Máy chủ không trả về nội dung.');
+        throw AiChatException.message('Máy chủ không trả về nội dung.');
       }
 
       final contentType =
@@ -142,25 +153,48 @@ class AiChatRepository {
       final bytes = await body.stream.expand((chunk) => chunk).toList();
       final decoded = jsonDecode(utf8.decode(bytes));
       if (decoded is! Map || decoded['success'] != true) {
-        throw AiChatException(
-          decoded is Map && decoded['error'] != null
-              ? decoded['error'].toString()
-              : 'Phản hồi AI không hợp lệ.',
-        );
+        if (decoded is Map) {
+          throw AiChatException(AiChatFailureDetails.fromJson(decoded));
+        }
+        throw AiChatException.message('Phản hồi AI không hợp lệ.');
       }
       final data = decoded['data'];
       final reply = (decoded['reply'] ?? (data is Map ? data['reply'] : null))
           ?.toString();
       if (reply == null || reply.trim().isEmpty) {
-        throw const AiChatException('AI chưa trả về nội dung.');
+        throw AiChatException.message('AI chưa trả về nội dung.');
       }
-      yield AiChatDone(reply);
+      final usage = AiChatUsageUpdate.fromJson(decoded);
+      yield AiChatDone(reply, usage: usage.hasData ? usage : null);
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) rethrow;
-      throw AiChatException(_messageFrom(error));
+      throw await _exceptionFrom(error);
     } on FormatException {
-      throw const AiChatException('Không thể đọc phản hồi từ AI.');
+      throw AiChatException.message('Không thể đọc phản hồi từ AI.');
     }
+  }
+
+  Future<AiChatException> _exceptionFrom(DioException error) async {
+    Object? data = error.response?.data;
+    if (data is ResponseBody) {
+      try {
+        final bytes = await data.stream.expand((chunk) => chunk).toList();
+        data = jsonDecode(utf8.decode(bytes));
+      } catch (_) {
+        data = null;
+      }
+    } else if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
+    if (data is Map) {
+      final details = AiChatFailureDetails.fromJson(data);
+      if (details.message.trim().isNotEmpty || details.code != null) {
+        return AiChatException(details);
+      }
+    }
+    return AiChatException.message(error.userMessage);
   }
 
   String _messageFrom(DioException error) {

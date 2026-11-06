@@ -20,6 +20,7 @@ class AiChatState {
     this.selectedChart,
     this.selectedChartDetail,
     this.errorMessage,
+    this.failure,
   });
 
   final int selectedTopic;
@@ -29,6 +30,7 @@ class AiChatState {
   final SavedChart? selectedChart;
   final SavedChartDetail? selectedChartDetail;
   final String? errorMessage;
+  final AiChatFailureDetails? failure;
 
   bool get isSending =>
       phase == AiChatPhase.sending || phase == AiChatPhase.streaming;
@@ -49,9 +51,11 @@ class AiChatState {
     SavedChart? selectedChart,
     SavedChartDetail? selectedChartDetail,
     String? errorMessage,
+    AiChatFailureDetails? failure,
     bool clearDetail = false,
     bool clearError = false,
     bool clearStreamingMessage = false,
+    bool clearFailure = false,
   }) => AiChatState(
     selectedTopic: selectedTopic ?? this.selectedTopic,
     phase: phase ?? this.phase,
@@ -64,6 +68,7 @@ class AiChatState {
         ? null
         : selectedChartDetail ?? this.selectedChartDetail,
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    failure: clearFailure ? null : failure ?? this.failure,
   );
 
   static const welcomeMessages = <AiChatMessage>[

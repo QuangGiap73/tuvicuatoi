@@ -88,6 +88,29 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     );
   }
 
+  void applyAiUsage({
+    int? coinBalance,
+    int? dailyAiQuestionsLeft,
+    int? dailyQuestionsUsed,
+    int? aiDailyLimit,
+    bool? hasUnlimitedAi,
+  }) {
+    final session = state.asData?.value;
+    if (session == null) return;
+    state = AsyncData(
+      AuthSession(
+        token: session.token,
+        user: session.user.withAiUsage(
+          coinBalance: coinBalance,
+          dailyAiQuestionsLeft: dailyAiQuestionsLeft,
+          dailyQuestionsUsed: dailyQuestionsUsed,
+          aiDailyLimit: aiDailyLimit,
+          hasUnlimitedAi: hasUnlimitedAi,
+        ),
+      ),
+    );
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     try {

@@ -4,18 +4,24 @@ class PaymentOrderState {
   const PaymentOrderState({
     this.activeOrderId,
     this.order,
+    this.checkoutUrl = '',
+    this.qrCode = '',
     this.isChecking = false,
     this.error,
   });
 
   final String? activeOrderId;
   final PaymentOrder? order;
+  final String checkoutUrl;
+  final String qrCode;
   final bool isChecking;
   final String? error;
 
   PaymentOrderState copyWith({
     String? activeOrderId,
     PaymentOrder? order,
+    String? checkoutUrl,
+    String? qrCode,
     bool? isChecking,
     String? error,
     bool clearError = false,
@@ -23,6 +29,8 @@ class PaymentOrderState {
   }) => PaymentOrderState(
     activeOrderId: clearActive ? null : activeOrderId ?? this.activeOrderId,
     order: clearActive ? null : order ?? this.order,
+    checkoutUrl: clearActive ? '' : checkoutUrl ?? this.checkoutUrl,
+    qrCode: clearActive ? '' : qrCode ?? this.qrCode,
     isChecking: isChecking ?? this.isChecking,
     error: clearError ? null : error ?? this.error,
   );

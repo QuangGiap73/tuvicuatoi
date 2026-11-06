@@ -150,19 +150,6 @@ class AuthRepository {
     }
   }
 
-  Future<void> recordAiQuestion() async {
-    try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        '/auth/record-question/',
-      );
-      if (response.data?['success'] != true) {
-        throw const AuthException('Không thể ghi nhận lượt hỏi AI.');
-      }
-    } on DioException catch (error) {
-      throw AuthException(_messageFrom(error));
-    }
-  }
-
   AuthSession _sessionFrom(Map<String, dynamic>? data) {
     final token = (data?['token'] ?? data?['session_id'])?.toString();
     final user = data?['user'];

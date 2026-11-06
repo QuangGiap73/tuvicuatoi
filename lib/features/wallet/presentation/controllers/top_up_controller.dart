@@ -34,16 +34,17 @@ class TopUpController extends Notifier<TopUpState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final repository = ref.read(walletRepositoryProvider);
-      final coinFuture = repository.getPackages(cancelToken: token);
+      final catalogFuture = repository.getPackageCatalog(cancelToken: token);
       final membershipFuture = repository.getMembershipPackages(
         cancelToken: token,
       );
-      final coinPackages = await coinFuture;
+      final catalog = await catalogFuture;
       final memberships = await membershipFuture;
       if (token.isCancelled) return;
       state = state.copyWith(
-        coinPackages: coinPackages,
+        coinPackages: catalog.packages,
         memberships: memberships,
+        paymentSetting: catalog.paymentSetting,
         isLoading: false,
         clearError: true,
       );

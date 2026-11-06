@@ -6,6 +6,7 @@ import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../horoscope/domain/saved_chart.dart';
+import '../../wallet/presentation/providers/top_up_providers.dart';
 import '../domain/ai_chat_message.dart';
 import 'controllers/ai_chat_controller.dart';
 import 'state/ai_chat_state.dart';
@@ -49,12 +50,125 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
     super.dispose();
   }
 
-  void _send([String? suggestion]) {
+  Future<void> _send([String? suggestion]) async {
     final text = suggestion ?? _textController.text;
     if (text.trim().isEmpty) return;
+    final user = ref.read(authControllerProvider).asData?.value?.user;
+    final aiChatCost =
+        ref
+            .read(featureCostsProvider)
+            .value
+            ?.costOf('ai_chat', fallback: 100) ??
+        100;
+    final needsPaidConfirmation =
+        user != null &&
+        !user.hasUnlimitedAi &&
+        (user.dailyAiQuestionsLeft ?? 1) <= 0 &&
+        user.coinBalance >= aiChatCost;
+    if (needsPaidConfirmation) {
+      final confirmed = await _confirmPaidQuestion(
+        user.coinBalance,
+        aiChatCost,
+      );
+      if (confirmed != true || !mounted) return;
+    }
     ref.read(aiChatControllerProvider.notifier).send(text);
     _textController.clear();
     _scrollToBottom();
+  }
+
+  Future<bool?> _confirmPaidQuestion(int balance, int cost) => showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: const Color(0xFF0B1928),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFD4A43D)),
+      ),
+      icon: const Icon(
+        Icons.monetization_on_rounded,
+        color: Color(0xFFFFCF55),
+        size: 38,
+      ),
+      title: Text(
+        'Sử dụng $cost Xu?',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Color(0xFFFFE4A4)),
+      ),
+      content: Text(
+        'Bạn đã hết lượt hỏi miễn phí hôm nay. Câu hỏi này dự kiến sử dụng $cost Xu.\n\nSố dư hiện tại: $balance Xu',
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('HỦY'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFD6A12F),
+            foregroundColor: const Color(0xFF281A04),
+          ),
+          child: const Text('GỬI CÂU HỎI'),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _showInsufficientCoinsDialog(
+    AiChatFailureDetails failure,
+  ) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF0B1928),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFFD4A43D)),
+        ),
+        icon: const Icon(
+          Icons.account_balance_wallet_outlined,
+          color: Color(0xFFFFCF55),
+          size: 38,
+        ),
+        title: const Text(
+          'Không đủ Xu',
+          style: TextStyle(color: Color(0xFFFFE4A4)),
+        ),
+        content: Text(
+          failure.message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ĐỂ SAU'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(dialogContext, 'premium'),
+            child: const Text('NÂNG CẤP'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, 'topup'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD6A12F),
+              foregroundColor: const Color(0xFF281A04),
+            ),
+            child: const Text('NẠP XU'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'topup') {
+      context.push(AppRoute.coinPackages);
+    } else if (action == 'premium') {
+      context.push('${AppRoute.coinPackages}?tab=membership');
+    }
   }
 
   void _scrollToBottom({bool immediate = false}) {
@@ -91,6 +205,7 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    ref.watch(featureCostsProvider);
     if (auth.isLoading) {
       return const _AiChatAccessBoundary(isLoading: true);
     }
@@ -123,7 +238,18 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
       next,
     ) {
       if (next == null || next == previous) return;
+      if (ref.read(aiChatControllerProvider).failure?.isInsufficientCoins ==
+          true) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next)));
+    });
+    ref.listen(aiChatControllerProvider.select((s) => s.failure), (
+      previous,
+      next,
+    ) {
+      if (next == null || identical(next, previous)) return;
+      if (next.isInsufficientCoins) _showInsufficientCoinsDialog(next);
     });
 
     final media = MediaQuery.of(context);

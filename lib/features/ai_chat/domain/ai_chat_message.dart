@@ -71,12 +71,84 @@ class AiChatDelta extends AiChatStreamEvent {
   final String text;
 }
 
+class AiChatUsageUpdate {
+  const AiChatUsageUpdate({
+    this.coinsSpent,
+    this.coinBalance,
+    this.dailyAiQuestionsLeft,
+    this.dailyQuestionsUsed,
+    this.aiDailyLimit,
+    this.hasUnlimitedAi,
+  });
+
+  final int? coinsSpent;
+  final int? coinBalance;
+  final int? dailyAiQuestionsLeft;
+  final int? dailyQuestionsUsed;
+  final int? aiDailyLimit;
+  final bool? hasUnlimitedAi;
+
+  bool get hasData =>
+      coinsSpent != null ||
+      coinBalance != null ||
+      dailyAiQuestionsLeft != null ||
+      dailyQuestionsUsed != null ||
+      aiDailyLimit != null ||
+      hasUnlimitedAi != null;
+
+  factory AiChatUsageUpdate.fromJson(Map<dynamic, dynamic> json) {
+    final nested = json['data'];
+    final values = <dynamic, dynamic>{if (nested is Map) ...nested, ...json};
+    return AiChatUsageUpdate(
+      coinsSpent: _nullableInt(values['coinsSpent']),
+      coinBalance: _nullableInt(values['coinBalance']),
+      dailyAiQuestionsLeft: _nullableInt(values['dailyAiQuestionsLeft']),
+      dailyQuestionsUsed: _nullableInt(values['dailyQuestionsUsed']),
+      aiDailyLimit: _nullableInt(values['aiDailyLimit']),
+      hasUnlimitedAi: values['hasUnlimitedAi'] is bool
+          ? values['hasUnlimitedAi'] as bool
+          : null,
+    );
+  }
+}
+
+class AiChatFailureDetails {
+  const AiChatFailureDetails({
+    required this.message,
+    this.code,
+    this.requiredCoins,
+    this.usage,
+  });
+
+  final String message;
+  final String? code;
+  final int? requiredCoins;
+  final AiChatUsageUpdate? usage;
+
+  bool get isInsufficientCoins => code == 'INSUFFICIENT_COINS';
+
+  factory AiChatFailureDetails.fromJson(Map<dynamic, dynamic> json) {
+    final usage = AiChatUsageUpdate.fromJson(json);
+    return AiChatFailureDetails(
+      message: (json['error'] ?? json['message'] ?? json['detail'] ?? '')
+          .toString(),
+      code: json['code']?.toString(),
+      requiredCoins: _nullableInt(json['requiredCoins']),
+      usage: usage.hasData ? usage : null,
+    );
+  }
+}
+
 class AiChatDone extends AiChatStreamEvent {
-  const AiChatDone(this.fullText);
+  const AiChatDone(this.fullText, {this.usage});
   final String fullText;
+  final AiChatUsageUpdate? usage;
 }
 
 class AiChatStreamError extends AiChatStreamEvent {
-  const AiChatStreamError(this.message);
-  final String message;
+  const AiChatStreamError(this.details);
+  final AiChatFailureDetails details;
 }
+
+int? _nullableInt(Object? value) =>
+    value is num ? value.toInt() : int.tryParse(value?.toString().trim() ?? '');

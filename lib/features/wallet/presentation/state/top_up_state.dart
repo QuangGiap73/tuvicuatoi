@@ -6,6 +6,7 @@ class TopUpState {
   const TopUpState({
     this.coinPackages = const [],
     this.memberships = const [],
+    this.paymentSetting = const PaymentSetting(),
     this.selectedTab = TopUpTab.coins,
     this.isLoading = false,
     this.creatingProductId,
@@ -14,6 +15,7 @@ class TopUpState {
 
   final List<CoinPackage> coinPackages;
   final List<MembershipPackage> memberships;
+  final PaymentSetting paymentSetting;
   final TopUpTab selectedTab;
   final bool isLoading;
   final String? creatingProductId;
@@ -22,6 +24,7 @@ class TopUpState {
   TopUpState copyWith({
     List<CoinPackage>? coinPackages,
     List<MembershipPackage>? memberships,
+    PaymentSetting? paymentSetting,
     TopUpTab? selectedTab,
     bool? isLoading,
     String? creatingProductId,
@@ -31,6 +34,7 @@ class TopUpState {
   }) => TopUpState(
     coinPackages: coinPackages ?? this.coinPackages,
     memberships: memberships ?? this.memberships,
+    paymentSetting: paymentSetting ?? this.paymentSetting,
     selectedTab: selectedTab ?? this.selectedTab,
     isLoading: isLoading ?? this.isLoading,
     creatingProductId: clearCreating

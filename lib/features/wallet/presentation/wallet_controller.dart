@@ -106,6 +106,12 @@ class WalletController extends Notifier<WalletState> {
     return response['message']?.toString() ?? 'Điểm danh thành công.';
   });
 
+  void applyBalance(int balance) {
+    final info = state.info;
+    if (info == null || info.balance == balance) return;
+    state = state.copyWith(info: info.withBalance(balance));
+  }
+
   Future<String?> startMission(CoinMission mission) =>
       _run('start:${mission.code}', () async {
         final response = await ref

@@ -22,6 +22,8 @@ class PaymentOrderController extends Notifier<PaymentOrderState> {
     state = PaymentOrderState(
       activeOrderId: result.orderId,
       order: result.order,
+      checkoutUrl: result.checkoutUrl,
+      qrCode: result.qrCode,
     );
   }
 

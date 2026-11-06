@@ -56,7 +56,7 @@ void main() {
     final payload = [
       'data: {"delta":"Xin "}',
       'data: {"delta":"chào"}',
-      'data: {"done":true,"fullText":"Xin chào"}',
+      'data: {"done":true,"fullText":"Xin chào","coinsSpent":100,"coinBalance":200,"dailyAiQuestionsLeft":0,"dailyQuestionsUsed":4,"aiDailyLimit":3,"hasUnlimitedAi":false}',
       '',
     ].join('\n');
     final bytes = utf8.encode(payload);
@@ -72,6 +72,10 @@ void main() {
     expect((events[0] as AiChatDelta).text, 'Xin ');
     expect((events[1] as AiChatDelta).text, 'chào');
     expect((events[2] as AiChatDone).fullText, 'Xin chào');
+    final usage = (events[2] as AiChatDone).usage!;
+    expect(usage.coinsSpent, 100);
+    expect(usage.coinBalance, 200);
+    expect(usage.dailyQuestionsUsed, 4);
   });
 
   test('chat sends the documented payload with focusPalace', () async {
@@ -89,7 +93,16 @@ void main() {
                 Headers.contentTypeHeader: ['application/json'],
               }),
               data: ResponseBody.fromString(
-                jsonEncode({'success': true, 'reply': 'Câu trả lời từ AI'}),
+                jsonEncode({
+                  'success': true,
+                  'reply': 'Câu trả lời từ AI',
+                  'coinsSpent': 0,
+                  'coinBalance': 300,
+                  'dailyAiQuestionsLeft': 2,
+                  'dailyQuestionsUsed': 1,
+                  'aiDailyLimit': 3,
+                  'hasUnlimitedAi': false,
+                }),
                 200,
                 headers: {
                   Headers.contentTypeHeader: ['application/json'],
@@ -108,8 +121,6 @@ void main() {
           chartId: 'chart-1',
           chartData: const {'id': 'chart-1'},
           focusPalace: 'Quan Lộc',
-          isPremium: true,
-          userEmail: 'user@example.com',
         )
         .toList();
 
@@ -119,12 +130,63 @@ void main() {
         'chartId': 'chart-1',
         'chartData': {'id': 'chart-1'},
         'focusPalace': 'Quan Lộc',
-        'isPremium': true,
-        'userEmail': 'user@example.com',
         'stream': true,
       },
     ]);
     expect((events.single as AiChatDone).fullText, 'Câu trả lời từ AI');
+    expect((events.single as AiChatDone).usage?.dailyAiQuestionsLeft, 2);
+  });
+
+  test('streamed HTTP 400 preserves insufficient-coins metadata', () async {
+    final errorDio = Dio(BaseOptions(baseUrl: 'https://tuvicuatoi.com/api'));
+    errorDio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.reject(
+            DioException.badResponse(
+              statusCode: 400,
+              requestOptions: options,
+              response: Response<ResponseBody>(
+                requestOptions: options,
+                statusCode: 400,
+                data: ResponseBody.fromString(
+                  jsonEncode({
+                    'success': false,
+                    'code': 'INSUFFICIENT_COINS',
+                    'error': 'Không đủ Xu',
+                    'requiredCoins': 100,
+                    'coinBalance': 50,
+                    'dailyAiQuestionsLeft': 0,
+                    'dailyQuestionsUsed': 3,
+                    'aiDailyLimit': 3,
+                    'hasUnlimitedAi': false,
+                  }),
+                  400,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    final errorRepository = AiChatRepository(errorDio);
+
+    try {
+      await errorRepository
+          .sendMessage(
+            message: 'Hỏi AI',
+            chartId: 'chart-1',
+            chartData: const {},
+            focusPalace: 'Mệnh',
+          )
+          .toList();
+      fail('Expected AiChatException');
+    } on AiChatException catch (error) {
+      expect(error.isInsufficientCoins, isTrue);
+      expect(error.details.requiredCoins, 100);
+      expect(error.details.usage?.coinBalance, 50);
+      expect(error.details.usage?.dailyQuestionsUsed, 3);
+    }
   });
 
   test('clear history posts the selected chart id', () async {

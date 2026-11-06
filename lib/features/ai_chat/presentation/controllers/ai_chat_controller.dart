@@ -4,12 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_provider.dart';
-import '../../../auth/data/auth_repository.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../horoscope/data/chart_repository.dart';
 import '../../../horoscope/domain/chart_result.dart';
 import '../../../horoscope/domain/saved_chart.dart';
 import '../../../horoscope/domain/saved_chart_detail.dart';
+import '../../../wallet/presentation/transaction_history_controller.dart';
+import '../../../wallet/presentation/wallet_controller.dart';
 import '../../data/ai_chat_history_store.dart';
 import '../../data/ai_chat_repository.dart';
 import '../../domain/ai_chat_message.dart';
@@ -217,6 +218,7 @@ class AiChatController extends Notifier<AiChatState> {
       phase: AiChatPhase.sending,
       messages: List.unmodifiable([...state.messages, userMessage]),
       clearError: true,
+      clearFailure: true,
     );
 
     _sendCancelToken?.cancel('A newer message was sent');
@@ -225,6 +227,7 @@ class AiChatController extends Notifier<AiChatState> {
     final responseBuffer = StringBuffer();
     var receivedAssistantContent = false;
     var finalizedAssistant = false;
+    AiChatUsageUpdate? usage;
     try {
       final selectedPalace = palaceNames[state.selectedTopic];
       // Giữ tiền tố để tương thích backend hiện tại, đồng thời gửi focusPalace
@@ -239,8 +242,6 @@ class AiChatController extends Notifier<AiChatState> {
                 chartId: chart.id,
                 chartData: detail.chartData,
                 focusPalace: selectedPalace,
-                isPremium: user.isPremium || user.hasUnlimitedAi,
-                userEmail: user.email,
                 cancelToken: token,
               )) {
         if (session != _chartSession || token.isCancelled) return false;
@@ -256,6 +257,7 @@ class AiChatController extends Notifier<AiChatState> {
             token: token,
           );
         } else if (event is AiChatDone) {
+          usage = event.usage ?? usage;
           final finalText = event.fullText.trim().isNotEmpty
               ? event.fullText
               : responseBuffer.toString();
@@ -270,12 +272,12 @@ class AiChatController extends Notifier<AiChatState> {
           );
           finalizedAssistant = true;
         } else if (event is AiChatStreamError) {
-          throw AiChatException(event.message);
+          throw AiChatException(event.details);
         }
       }
       if (!receivedAssistantContent ||
           responseBuffer.isEmpty && !finalizedAssistant) {
-        throw const AiChatException('AI chưa trả về nội dung.');
+        throw AiChatException.message('AI chưa trả về nội dung.');
       }
       if (!finalizedAssistant) {
         _streamFlushTimer?.cancel();
@@ -295,12 +297,14 @@ class AiChatController extends Notifier<AiChatState> {
             chartId: chart.id,
             messages: state.messages,
           );
-      try {
-        await ref.read(authRepositoryProvider).recordAiQuestion();
-        await ref.read(authControllerProvider.notifier).refreshProfile();
-      } on AuthException {
-        // The answer was completed successfully. A usage tracking failure must
-        // not mark the user's message as failed or trigger a duplicate retry.
+      if (usage case final update?) {
+        _applyUsage(update);
+      } else {
+        // Compatibility for an older SSE final event without usage metadata.
+        // Never call record-question: /ai/chat/ already records the usage.
+        try {
+          await ref.read(authControllerProvider.notifier).refreshProfile();
+        } catch (_) {}
       }
       return true;
     } on DioException catch (error) {
@@ -308,7 +312,9 @@ class AiChatController extends Notifier<AiChatState> {
       _markFailed(userId, error.userMessage);
       return false;
     } on AiChatException catch (error) {
-      _markFailed(userId, error.message);
+      final usage = error.details.usage;
+      if (usage != null) _applyUsage(usage);
+      _markFailed(userId, error.message, failure: error.details);
       return false;
     } finally {
       _streamFlushTimer?.cancel();
@@ -444,7 +450,30 @@ class AiChatController extends Notifier<AiChatState> {
     return List.unmodifiable(messages);
   }
 
-  void _markFailed(String userId, String message) {
+  void _applyUsage(AiChatUsageUpdate usage) {
+    ref
+        .read(authControllerProvider.notifier)
+        .applyAiUsage(
+          coinBalance: usage.coinBalance,
+          dailyAiQuestionsLeft: usage.dailyAiQuestionsLeft,
+          dailyQuestionsUsed: usage.dailyQuestionsUsed,
+          aiDailyLimit: usage.aiDailyLimit,
+          hasUnlimitedAi: usage.hasUnlimitedAi,
+        );
+    final balance = usage.coinBalance;
+    if (balance != null && ref.exists(walletControllerProvider)) {
+      ref.read(walletControllerProvider.notifier).applyBalance(balance);
+    }
+    if ((usage.coinsSpent ?? 0) > 0) {
+      ref.invalidate(transactionHistoryControllerProvider);
+    }
+  }
+
+  void _markFailed(
+    String userId,
+    String message, {
+    AiChatFailureDetails? failure,
+  }) {
     final messages = state.messages
         .map(
           (item) => item.id == userId
@@ -456,6 +485,7 @@ class AiChatController extends Notifier<AiChatState> {
       phase: AiChatPhase.ready,
       messages: List.unmodifiable(messages),
       errorMessage: message,
+      failure: failure,
       clearStreamingMessage: true,
     );
   }

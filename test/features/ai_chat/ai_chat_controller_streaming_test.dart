@@ -6,7 +6,6 @@ import 'package:tuvicuatoi/features/ai_chat/data/ai_chat_repository.dart';
 import 'package:tuvicuatoi/features/ai_chat/domain/ai_chat_message.dart';
 import 'package:tuvicuatoi/features/ai_chat/presentation/controllers/ai_chat_controller.dart';
 import 'package:tuvicuatoi/features/ai_chat/presentation/state/ai_chat_state.dart';
-import 'package:tuvicuatoi/features/auth/data/auth_repository.dart';
 import 'package:tuvicuatoi/features/auth/domain/auth_user.dart';
 import 'package:tuvicuatoi/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tuvicuatoi/features/horoscope/domain/chart_result.dart';
@@ -32,7 +31,6 @@ void main() {
           authControllerProvider.overrideWith(
             () => _FakeAuthController(session),
           ),
-          authRepositoryProvider.overrideWithValue(_FailingUsageRepository()),
           aiChatRepositoryProvider.overrideWithValue(_BurstChatRepository()),
           aiChatHistoryStoreProvider.overrideWithValue(_MemoryHistoryStore()),
         ],
@@ -87,11 +85,52 @@ void main() {
       expect(state.messages, AiChatState.welcomeMessages);
     },
   );
+
+  test('successful chat applies quota and coin metadata immediately', () async {
+    final auth = _FakeAuthController(
+      AuthSession(
+        token: 'token',
+        user: const AuthUser(
+          id: 'user-1',
+          email: 'member@example.com',
+          fullName: 'Member',
+          coinBalance: 300,
+          isPremium: false,
+          role: 'member',
+          authProvider: 'credentials',
+          dailyAiQuestionsLeft: 0,
+          dailyQuestionsUsed: 3,
+          aiDailyLimit: 3,
+        ),
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        authControllerProvider.overrideWith(() => auth),
+        aiChatRepositoryProvider.overrideWithValue(_UsageChatRepository()),
+        aiChatHistoryStoreProvider.overrideWithValue(_MemoryHistoryStore()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(authControllerProvider.future);
+    final controller = container.read(aiChatControllerProvider.notifier);
+    controller.useGeneratedChart(_chartResult());
+
+    expect(await controller.send('Hỏi câu trả phí'), isTrue);
+
+    final user = container.read(authControllerProvider).requireValue!.user;
+    expect(user.coinBalance, 200);
+    expect(user.dailyAiQuestionsLeft, 0);
+    expect(user.dailyQuestionsUsed, 4);
+    expect(user.aiDailyLimit, 3);
+    expect(auth.refreshCount, 0);
+  });
 }
 
 class _FakeAuthController extends AuthController {
   _FakeAuthController(this.session);
   AuthSession session;
+  int refreshCount = 0;
 
   @override
   Future<AuthSession?> build() async => session;
@@ -102,15 +141,9 @@ class _FakeAuthController extends AuthController {
   }
 
   @override
-  Future<void> refreshProfile() async {}
-}
-
-class _FailingUsageRepository extends AuthRepository {
-  _FailingUsageRepository() : super(Dio());
-
-  @override
-  Future<void> recordAiQuestion() =>
-      throw const AuthException('Usage tracking is unavailable in test.');
+  Future<void> refreshProfile() async {
+    refreshCount++;
+  }
 }
 
 class _BurstChatRepository extends AiChatRepository {
@@ -122,14 +155,37 @@ class _BurstChatRepository extends AiChatRepository {
     required String chartId,
     required Map<String, dynamic> chartData,
     required String focusPalace,
-    required bool isPremium,
-    required String userEmail,
     CancelToken? cancelToken,
   }) async* {
     for (var index = 0; index < 100; index++) {
       yield const AiChatDelta('x');
     }
     yield AiChatDone(List.filled(100, 'x').join());
+  }
+}
+
+class _UsageChatRepository extends AiChatRepository {
+  _UsageChatRepository() : super(Dio());
+
+  @override
+  Stream<AiChatStreamEvent> sendMessage({
+    required String message,
+    required String chartId,
+    required Map<String, dynamic> chartData,
+    required String focusPalace,
+    CancelToken? cancelToken,
+  }) async* {
+    yield const AiChatDone(
+      'Câu trả lời',
+      usage: AiChatUsageUpdate(
+        coinsSpent: 100,
+        coinBalance: 200,
+        dailyAiQuestionsLeft: 0,
+        dailyQuestionsUsed: 4,
+        aiDailyLimit: 3,
+        hasUnlimitedAi: false,
+      ),
+    );
   }
 }
 

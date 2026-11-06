@@ -42,14 +42,32 @@ class WalletRepository {
     }
   }
 
-  Future<List<CoinPackage>> getPackages({CancelToken? cancelToken}) async {
+  Future<CoinPackageCatalog> getPackageCatalog({
+    CancelToken? cancelToken,
+  }) async {
     final body = await _get('/monetization/coin-packages/', cancelToken);
-    return _maps(body['coinPackages'])
+    final packages = _maps(body['coinPackages'])
         .map(CoinPackage.fromJson)
         .where(
           (item) => item.id.isNotEmpty && item.totalCoins > 0 && item.price > 0,
         )
         .toList();
+    final setting = body['paymentSetting'];
+    return CoinPackageCatalog(
+      packages: List.unmodifiable(packages),
+      paymentSetting: setting is Map
+          ? PaymentSetting.fromJson(Map<String, dynamic>.from(setting))
+          : const PaymentSetting(),
+    );
+  }
+
+  Future<FeatureCosts> getFeatureCosts({CancelToken? cancelToken}) async {
+    final body = await _get('/monetization/feature-costs/', cancelToken);
+    final costs = body['costs'];
+    if (costs is! Map) {
+      throw const WalletException('Máy chủ chưa trả về bảng giá tính năng.');
+    }
+    return FeatureCosts.fromJson(Map<String, dynamic>.from(costs));
   }
 
   Future<List<MembershipPackage>> getMembershipPackages({

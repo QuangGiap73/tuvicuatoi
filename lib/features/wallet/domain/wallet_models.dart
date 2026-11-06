@@ -1,5 +1,70 @@
 enum CheckInDayStatus { completed, current, missed, upcoming }
 
+class FeatureCosts {
+  const FeatureCosts(this.values);
+
+  final Map<String, int> values;
+
+  int costOf(String key, {required int fallback}) => values[key] ?? fallback;
+
+  factory FeatureCosts.fromJson(Map<String, dynamic> json) => FeatureCosts(
+    Map.unmodifiable({
+      for (final entry in json.entries) entry.key: ?_integerOrNull(entry.value),
+    }),
+  );
+}
+
+class PaymentSetting {
+  const PaymentSetting({
+    this.bankName = '',
+    this.accountNumber = '',
+    this.accountHolder = '',
+    this.branch = '',
+    this.transferSyntaxPrefix = '',
+    this.note = '',
+    this.qrTemplateUrl = '',
+    this.supportEmail = '',
+    this.supportHotline = '',
+  });
+
+  final String bankName;
+  final String accountNumber;
+  final String accountHolder;
+  final String branch;
+  final String transferSyntaxPrefix;
+  final String note;
+  final String qrTemplateUrl;
+  final String supportEmail;
+  final String supportHotline;
+
+  bool get hasBankDetails =>
+      bankName.isNotEmpty ||
+      accountNumber.isNotEmpty ||
+      accountHolder.isNotEmpty;
+
+  factory PaymentSetting.fromJson(Map<String, dynamic> json) => PaymentSetting(
+    bankName: json['bankName']?.toString() ?? '',
+    accountNumber: json['accountNumber']?.toString() ?? '',
+    accountHolder: json['accountHolder']?.toString() ?? '',
+    branch: json['branch']?.toString() ?? '',
+    transferSyntaxPrefix: json['transferSyntaxPrefix']?.toString() ?? '',
+    note: json['note']?.toString() ?? '',
+    qrTemplateUrl: json['qrTemplateUrl']?.toString() ?? '',
+    supportEmail: json['supportEmail']?.toString() ?? '',
+    supportHotline: json['supportHotline']?.toString() ?? '',
+  );
+}
+
+class CoinPackageCatalog {
+  const CoinPackageCatalog({
+    required this.packages,
+    required this.paymentSetting,
+  });
+
+  final List<CoinPackage> packages;
+  final PaymentSetting paymentSetting;
+}
+
 class CheckInDay {
   const CheckInDay({
     required this.day,
@@ -93,6 +158,18 @@ class EarnCoinsInfo {
   final Set<int> completedCheckInDays;
   final Set<int> missedCheckInDays;
   final bool hasExplicitCheckInSchedule;
+
+  EarnCoinsInfo withBalance(int value) => EarnCoinsInfo(
+    balance: value,
+    hasCheckedInToday: hasCheckedInToday,
+    streakDays: streakDays,
+    checkInDays: checkInDays,
+    missions: missions,
+    currentCheckInDay: currentCheckInDay,
+    completedCheckInDays: completedCheckInDays,
+    missedCheckInDays: missedCheckInDays,
+    hasExplicitCheckInSchedule: hasExplicitCheckInSchedule,
+  );
 
   factory EarnCoinsInfo.fromJson(Map<String, dynamic> json) {
     final days = _maps(json['checkInDays']).map(CheckInDay.fromJson).toList();

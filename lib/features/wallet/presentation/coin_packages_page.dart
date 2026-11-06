@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/assets/mystic_assets.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
@@ -43,6 +42,8 @@ class _CoinPackagesPageState extends ConsumerState<CoinPackagesPage> {
     final error = ref.watch(topUpErrorProvider);
     final coinPackages = ref.watch(coinPackagesProvider);
     final memberships = ref.watch(membershipPackagesProvider);
+    final paymentSetting = ref.watch(paymentSettingProvider);
+    final featureCosts = ref.watch(featureCostsProvider).value;
     final balance = ref.watch(
       authControllerProvider.select(
         (value) => value.asData?.value?.user.coinBalance,
@@ -53,13 +54,17 @@ class _CoinPackagesPageState extends ConsumerState<CoinPackagesPage> {
       background: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            MysticAssets.homeBackground,
-            fit: BoxFit.cover,
-            cacheWidth:
-                (MediaQuery.sizeOf(context).width *
-                        MediaQuery.devicePixelRatioOf(context))
-                    .round(),
+          RepaintBoundary(
+            child: Image.asset(
+              MysticAssets.homeBackground,
+              fit: BoxFit.cover,
+              cacheWidth:
+                  (MediaQuery.sizeOf(context).width *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .round()
+                      .clamp(1, 720),
+              filterQuality: FilterQuality.low,
+            ),
           ),
           const ColoredBox(color: Color(0xB5040E1B)),
         ],
@@ -83,9 +88,17 @@ class _CoinPackagesPageState extends ConsumerState<CoinPackagesPage> {
                 coinPackages.isEmpty &&
                 memberships.isEmpty)
               _ErrorPanel(message: error)
-            else if (selectedTab == TopUpTab.coins)
-              _CoinPackageSection(packages: coinPackages)
-            else
+            else if (selectedTab == TopUpTab.coins) ...[
+              _CoinPackageSection(packages: coinPackages),
+              if (paymentSetting.hasBankDetails) ...[
+                const SizedBox(height: 14),
+                _TransferInformation(setting: paymentSetting),
+              ],
+              if (featureCosts != null && featureCosts.values.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                _FeatureCostTable(costs: featureCosts),
+              ],
+            ] else
               _MembershipSection(packages: memberships),
           ],
         ),
@@ -290,9 +303,7 @@ class _CoinPackageSection extends StatelessWidget {
                     SizedBox(
                       width: cardWidth,
                       height: 258,
-                      child: RepaintBoundary(
-                        child: _CoinPackageCard(package: package),
-                      ),
+                      child: _CoinPackageCard(package: package),
                     ),
                 ],
               );
@@ -314,10 +325,13 @@ class _CoinPackageCard extends ConsumerWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              MysticAssets.walletFrame,
-              fit: BoxFit.fill,
-              cacheWidth: 320,
+            child: RepaintBoundary(
+              child: Image.asset(
+                MysticAssets.walletFrame,
+                fit: BoxFit.fill,
+                cacheWidth: 280,
+                filterQuality: FilterQuality.low,
+              ),
             ),
           ),
           Padding(
@@ -467,9 +481,7 @@ class _MembershipSectionState extends State<_MembershipSection> {
             physics: const PageScrollPhysics(),
             itemBuilder: (_, index) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: RepaintBoundary(
-                child: _MembershipCard(package: packages[index]),
-              ),
+              child: _MembershipCard(package: packages[index]),
             ),
           ),
         ),
@@ -497,12 +509,12 @@ class _MembershipCard extends ConsumerWidget {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: ResizeImage.resizeIfNeeded(
-              800,
+              600,
               null,
               AssetImage(_frameFor(package)),
             ),
             fit: BoxFit.fill,
-            filterQuality: FilterQuality.medium,
+            filterQuality: FilterQuality.low,
           ),
         ),
         child: Column(
@@ -842,19 +854,186 @@ Future<void> _createOrder(
     }
     return;
   }
-  final uri = Uri.tryParse(result.checkoutUrl);
   ref.read(paymentOrderControllerProvider.notifier).track(result);
-  if (uri == null ||
-      !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-    ref.read(paymentOrderControllerProvider.notifier).clear();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể mở trang thanh toán PayOS.')),
-      );
-    }
-    return;
-  }
   if (context.mounted) await showPaymentStatusDialog(context);
+}
+
+class _TransferInformation extends StatelessWidget {
+  const _TransferInformation({required this.setting});
+
+  final PaymentSetting setting;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xE60A1A2A),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0x99D6A43C)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.account_balance_rounded, color: _gold, size: 19),
+            SizedBox(width: 8),
+            Text(
+              'THÔNG TIN CHUYỂN KHOẢN',
+              style: TextStyle(
+                color: Color(0xFFFFD978),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _TransferRow(label: 'Ngân hàng', value: setting.bankName),
+        _TransferRow(label: 'Số tài khoản', value: setting.accountNumber),
+        _TransferRow(label: 'Chủ tài khoản', value: setting.accountHolder),
+        if (setting.transferSyntaxPrefix.isNotEmpty)
+          _TransferRow(
+            label: 'Cú pháp',
+            value: '${setting.transferSyntaxPrefix} + mã đơn hàng',
+          ),
+        if (setting.note.isNotEmpty) ...[
+          const SizedBox(height: 7),
+          Text(
+            setting.note,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 10.5,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _TransferRow extends StatelessWidget {
+  const _TransferRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white54, fontSize: 10.5),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: const TextStyle(
+                color: Color(0xFFF5E5C0),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeatureCostTable extends StatelessWidget {
+  const _FeatureCostTable({required this.costs});
+
+  final FeatureCosts costs;
+
+  static const _labels = <String, String>{
+    'ai_chat': 'Hỏi AI sau khi hết lượt miễn phí',
+    'saved_chart': 'Lưu thêm một lá số',
+    'reading_section': 'Mở một mục luận giải chuyên sâu',
+    'reading_section_doithuong': 'Mở một mục luận giải đời thường',
+    'reading_bundle': 'Mở trọn bộ luận giải lá số',
+    'compatibility': 'Đối chiếu hợp tuổi và nhân duyên',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = _labels.entries
+        .where((entry) => costs.values.containsKey(entry.key))
+        .toList(growable: false);
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xE60A1A2A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x99D6A43C)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.price_check_rounded, color: _gold, size: 19),
+              SizedBox(width: 8),
+              Text(
+                'BẢNG GIÁ TIÊU HAO XU',
+                style: TextStyle(
+                  color: Color(0xFFFFD978),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          for (final entry in entries)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${costs.values[entry.key]} Xu',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD978),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 5),
+          const Text(
+            'Giá cuối cùng được máy chủ xác nhận khi thực hiện giao dịch.',
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 9.5,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _money(double value) => '${_number(value.round())}đ';
