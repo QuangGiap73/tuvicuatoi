@@ -219,12 +219,18 @@ class AuthUser {
     hasPassword: json['hasPassword'] == true || json['has_password'] == true,
     unlimitedCoins:
         json['unlimitedCoins'] == true || json['unlimited_coins'] == true,
-    dailyAiQuestionsLeft: (json['dailyAiQuestionsLeft'] as num?)?.toInt(),
-    dailyQuestionsUsed: (json['dailyQuestionsUsed'] as num?)?.toInt(),
-    aiDailyLimit: (json['aiDailyLimit'] as num?)?.toInt(),
+    dailyAiQuestionsLeft:
+        ((json['dailyAiQuestionsLeft'] ?? json['daily_ai_questions_left'])
+                as num?)
+            ?.toInt(),
+    dailyQuestionsUsed:
+        ((json['dailyQuestionsUsed'] ?? json['daily_questions_used']) as num?)
+            ?.toInt(),
+    aiDailyLimit: ((json['aiDailyLimit'] ?? json['ai_daily_limit']) as num?)
+        ?.toInt(),
     maxAiQuestions:
         (json['maxAiQuestions'] as num?)?.toInt() ??
-        (json['aiDailyLimit'] as num?)?.toInt(),
+        ((json['aiDailyLimit'] ?? json['ai_daily_limit']) as num?)?.toInt(),
     hasUnlimitedAi:
         json['hasUnlimitedAi'] == true || json['has_unlimited_ai'] == true,
     hasAiChatHistory:

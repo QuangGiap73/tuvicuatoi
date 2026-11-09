@@ -19,18 +19,15 @@ class AiChatMessageBubble extends StatelessWidget {
         ? MysticAssets.aiChatBubbleUser
         : MysticAssets.aiChatBubbleAi;
 
-    // Tự động điều chỉnh khoảng đệm đỉnh dựa trên độ dài tin nhắn
-    // Tin nhắn dài (> 80 ký tự): đệm 30dp để chữ không bị đè lên viền hoa văn mép trên
-    // Tin nhắn ngắn: đệm 22dp vừa vặn, thanh lịch
-    final isLongMessage = message.content.length > 80;
-    final topPadding = isUser ? 14.0 : (isLongMessage ? 30.0 : 22.0);
-    final bottomPadding = isUser ? 12.0 : 14.0;
-    final horizontalPadding = isUser ? 17.0 : 18.0;
+    final topPadding = isUser ? 14.0 : 13.0;
+    final bottomPadding = isUser ? 12.0 : 11.0;
+    final leftPadding = isUser ? 17.0 : 14.0;
+    final rightPadding = isUser ? 17.0 : 14.0;
 
     return RepaintBoundary(
       child: Padding(
         // Không để bong bóng và avatar chạm sát hai viền của khung giấy.
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        padding: EdgeInsets.fromLTRB(isUser ? 14 : 5, 0, isUser ? 14 : 12, 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: isUser
@@ -42,26 +39,55 @@ class AiChatMessageBubble extends StatelessWidget {
                 offset: const Offset(0, 4),
                 child: const _AstrologyStarAvatar(),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
             ],
             Flexible(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 300),
+                constraints: BoxConstraints(maxWidth: isUser ? 300 : 328),
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: Image.asset(
-                        bubbleAsset,
-                        fit: BoxFit.fill,
-                        cacheWidth: (300 * dpr).round(),
-                        filterQuality: FilterQuality.medium,
-                      ),
+                      child: isUser
+                          ? Image.asset(
+                              bubbleAsset,
+                              fit: BoxFit.fill,
+                              cacheWidth: (300 * dpr).round(),
+                              filterQuality: FilterQuality.medium,
+                            )
+                          : const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFFFF9E9),
+                                    Color(0xFFF5DFB1),
+                                  ],
+                                ),
+                                border: Border.fromBorderSide(
+                                  BorderSide(
+                                    color: Color(0xFFC18B32),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(16),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color(0x30000000),
+                                    blurRadius: 3,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
                     ),
                     Padding(
                       padding: EdgeInsets.fromLTRB(
-                        horizontalPadding,
+                        leftPadding,
                         topPadding,
-                        horizontalPadding,
+                        rightPadding,
                         bottomPadding,
                       ),
                       child: Column(
@@ -72,13 +98,13 @@ class AiChatMessageBubble extends StatelessWidget {
                               children: _parseMarkdownSpans(
                                 message.content,
                                 normalStyle: const TextStyle(
-                                  color: Color(0xFF2B1D12),
+                                  color: Color(0xFF342417),
                                   fontSize: 13.5,
                                   height: 1.44,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 boldStyle: const TextStyle(
-                                  color: Color(0xFF1B0E05),
+                                  color: Color(0xFF1E1208),
                                   fontSize: 13.5,
                                   height: 1.44,
                                   fontWeight: FontWeight.w800,

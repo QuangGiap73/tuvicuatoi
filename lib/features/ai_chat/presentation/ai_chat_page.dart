@@ -99,8 +99,8 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
       priceNote: 'Số dư hiện tại: $balance Xu',
       cancelLabel: 'HỦY',
       confirmLabel: 'GỬI CÂU HỎI',
-      onCancel: () => Navigator.pop(context, false),
-      onConfirm: () => Navigator.pop(context, true),
+      onCancel: () => Navigator.of(context, rootNavigator: true).pop(false),
+      onConfirm: () => Navigator.of(context, rootNavigator: true).pop(true),
     ),
   );
 
@@ -119,14 +119,16 @@ class _AiChatPageState extends ConsumerState<AiChatPage> {
           size: 38,
         ),
         extraContent: OutlinedButton.icon(
-          onPressed: () => Navigator.pop(context, 'premium'),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: true).pop('premium'),
           icon: const Icon(Icons.workspace_premium_outlined, size: 18),
           label: const Text('XEM GÓI HỘI VIÊN'),
         ),
         cancelLabel: 'ĐỂ SAU',
         confirmLabel: 'NẠP XU',
-        onCancel: () => Navigator.pop(context),
-        onConfirm: () => Navigator.pop(context, 'topup'),
+        onCancel: () => Navigator.of(context, rootNavigator: true).pop(),
+        onConfirm: () =>
+            Navigator.of(context, rootNavigator: true).pop('topup'),
       ),
     );
     if (!mounted) return;
@@ -496,7 +498,7 @@ class _ChatHeader extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 3),
-              _OnlinePill(),
+              const _AiQuotaPill(),
             ],
           ),
         ),
@@ -547,6 +549,81 @@ class _OnlinePill extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _AiQuotaPill extends ConsumerWidget {
+  const _AiQuotaPill();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quota = ref.watch(
+      authControllerProvider.select((state) {
+        final user = state.asData?.value?.user;
+        return (
+          remaining: user?.dailyAiQuestionsLeft,
+          used: user?.dailyQuestionsUsed,
+          limit: user?.aiDailyLimit ?? user?.maxAiQuestions,
+          unlimited: user?.hasUnlimitedAi ?? false,
+          hasUser: user != null,
+        );
+      }),
+    );
+    if (!quota.hasUser) return const _OnlinePill();
+
+    String label;
+    IconData icon;
+    if (quota.unlimited) {
+      label = 'AI không giới hạn';
+      icon = Icons.all_inclusive_rounded;
+    } else {
+      final limit = quota.limit;
+      final remaining =
+          quota.remaining ??
+          (limit != null && quota.used != null
+              ? (limit - quota.used!).clamp(0, limit)
+              : null);
+      if (remaining == null || limit == null) {
+        return const _OnlinePill();
+      }
+      if (remaining > 0) {
+        label = 'Miễn phí $remaining/$limit';
+        icon = Icons.auto_awesome_rounded;
+      } else {
+        final cost =
+            ref
+                .watch(featureCostsProvider)
+                .value
+                ?.costOf('ai_chat', fallback: 100) ??
+            100;
+        label = '$cost Xu/câu';
+        icon = Icons.monetization_on_outlined;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xD9071727),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFC89B3D)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFFFFD568), size: 11),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFFFE5A3),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _RoundButton extends StatelessWidget {
