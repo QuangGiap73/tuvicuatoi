@@ -17,6 +17,7 @@ abstract final class MysticAssets {
   static const homeBackground = '$backgrounds/background_home_D.png';
   static const myChartsBackground = '$backgrounds/background_la_so_A.png';
   static const dailyFortuneBackground = '$backgrounds/background_van_han_A.png';
+  static const fortuneCalendarBackground = '$backgrounds/background_lich_A.png';
   static const paymentBackground = '$backgrounds/background_pay_A.png';
   static const chartPickerBackground =
       '$backgrounds/background_doi_la_so_B.png';

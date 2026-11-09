@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="night" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17233f"/>
+      <stop offset="1" stop-color="#050912"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="18" y1="14" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0a8"/>
+      <stop offset=".48" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#9b6b13"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#night)"/>
+  <circle cx="32" cy="32" r="20.5" fill="none" stroke="url(#gold)" stroke-width="2.4"/>
+  <circle cx="32" cy="32" r="14.5" fill="none" stroke="#d4af37" stroke-width="1" opacity=".7"/>
+  <path d="m32 6 3.2 18.8L58 32l-22.8 7.2L32 58l-3.2-18.8L6 32l22.8-7.2L32 6Z" fill="url(#gold)"/>
+  <circle cx="32" cy="32" r="8.5" fill="#0b1326" stroke="#fff0a8" stroke-width="1.5"/>
+  <path d="M32 23.5a8.5 8.5 0 0 1 0 17 4.25 4.25 0 0 0 0-8.5 4.25 4.25 0 0 1 0-8.5Z" fill="#f5d77f"/>
+  <circle cx="32" cy="27.75" r="1.35" fill="#0b1326"/>
+  <circle cx="32" cy="36.25" r="1.35" fill="#f5d77f"/>
+</svg>

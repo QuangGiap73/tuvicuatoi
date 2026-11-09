@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/mystic_colors.dart';
 import '../../../core/widgets/mystic_app_bar.dart';
+import '../../../core/widgets/mystic_date_picker_dialog.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import 'controllers/avatar_update_controller.dart';
 import 'providers/profile_providers.dart';
@@ -205,11 +206,16 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _pickDate() async {
     final initial = DateTime.tryParse(_dateController.text) ?? DateTime(2000);
-    final selected = await showDatePicker(
+    final selected = await showDialog<DateTime>(
       context: context,
-      initialDate: initial,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      barrierColor: const Color(0xCC00050A),
+      builder: (context) => MysticDatePickerDialog(
+        initialDate: initial,
+        firstDate: DateTime(1900),
+        lastDate: DateUtils.dateOnly(DateTime.now()),
+        title: 'Chọn ngày sinh',
+        showTodayButton: false,
+      ),
     );
     if (selected == null) return;
     _dateController.text =

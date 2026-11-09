@@ -6,6 +6,7 @@ import '../../../app/router/app_router.dart';
 import '../../../core/assets/mystic_assets.dart';
 import '../../../core/theme/mystic_typography.dart';
 import '../../../core/theme/mystic_spacing.dart';
+import '../../../core/widgets/mystic_date_picker_dialog.dart';
 import '../../../core/widgets/mystic_scaffold.dart';
 import 'controllers/daily_fortune_controller.dart';
 import 'widgets/daily_fortune_date_selector.dart';
@@ -279,12 +280,14 @@ Future<void> _selectDate(
   WidgetRef ref,
   DateTime selectedDate,
 ) async {
-  final date = await showDatePicker(
+  final date = await showDialog<DateTime>(
     context: context,
-    initialDate: selectedDate,
-    firstDate: DateTime(1900),
-    lastDate: DateTime.now().add(const Duration(days: 365)),
-    helpText: 'Chọn ngày xem vận hạn',
+    barrierColor: const Color(0xCC00050A),
+    builder: (context) => MysticDatePickerDialog(
+      initialDate: selectedDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    ),
   );
   if (date == null) return;
   ref.read(dailyFortuneControllerProvider.notifier).selectDate(date);

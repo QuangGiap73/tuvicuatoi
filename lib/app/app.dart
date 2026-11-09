@@ -8,7 +8,7 @@ class TuViCuaToiApp extends ConsumerWidget {
   const TuViCuaToiApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
-    title: 'Tử Vi AI 2026',
+    title: 'Tử Vi Của Tôi',
     debugShowCheckedModeBanner: false,
     theme: MysticTheme.dark,
     routerConfig: ref.watch(appRouterProvider),
