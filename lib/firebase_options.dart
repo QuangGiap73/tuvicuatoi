@@ -60,11 +60,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBLbz4m5h2dd9x8aQ404ilN2APTD1svf_M',
-    appId: '1:179234634841:ios:74f0346b8b573ad4978548',
+    appId: '1:179234634841:ios:b25d4011d02c50d3978548',
     messagingSenderId: '179234634841',
     projectId: 'tuvicuatoi-5b666',
     storageBucket: 'tuvicuatoi-5b666.firebasestorage.app',
-    iosBundleId: 'com.example.tuvicuatoi',
+    iosClientId:
+        '179234634841-ra3k7v7v5flj5mplro94q8b54prrrd3o.apps.googleusercontent.com',
+    iosBundleId: 'com.tuvicuatoi.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(

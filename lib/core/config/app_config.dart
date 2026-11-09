@@ -12,5 +12,7 @@ abstract final class AppConfig {
 
   static const googleIosClientId = String.fromEnvironment(
     'GOOGLE_IOS_CLIENT_ID',
+    defaultValue:
+        '179234634841-ra3k7v7v5flj5mplro94q8b54prrrd3o.apps.googleusercontent.com',
   );
 }
