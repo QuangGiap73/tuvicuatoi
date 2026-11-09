@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>179234634841-ra3k7v7v5flj5mplro94q8b54prrrd3o.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.179234634841-ra3k7v7v5flj5mplro94q8b54prrrd3o</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>179234634841-j365vmm13etvm0r2dopq4u182nosrb3v.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBLbz4m5h2dd9x8aQ404ilN2APTD1svf_M</string>
+	<key>GCM_SENDER_ID</key>
+	<string>179234634841</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.tuvicuatoi.app</string>
+	<key>PROJECT_ID</key>
+	<string>tuvicuatoi-5b666</string>
+	<key>STORAGE_BUCKET</key>
+	<string>tuvicuatoi-5b666.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:179234634841:ios:b25d4011d02c50d3978548</string>
+</dict>
+</plist>
